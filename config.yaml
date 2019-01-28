@@ -1,7 +1,9 @@
 server:
   port: 5000
-
   
+media:
+  port: auto
+
 cluster:
   origins:
     - 10.0.10.25:5000
