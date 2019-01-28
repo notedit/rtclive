@@ -165,6 +165,20 @@ func play(c *gin.Context) {
 }
 
 
+func offer(c *gin.Context) {
+
+	remoteOffer := endpoint.CreateOffer(Capabilities["video"], Capabilities["audio"])
+
+	c.JSON(200, gin.H{
+		"s": 10000,
+		"d":map[string]string{
+			"sdp":remoteOffer.String(),
+		},
+		"e":"",
+	})
+}
+
+
 func main() {
 
 	r := gin.Default()
@@ -178,6 +192,7 @@ func main() {
 	r.POST("/unpublish/:streamID",unpublish)
 	r.POST("/play/:streamID", play)
 	r.POST("/unplay/:streamID",unplay)
+	r.GET("/offer", offer)
 
 	r.Run(":5000")
 }
