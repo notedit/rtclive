@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-contrib/cors"
 	"github.com/notedit/media-server-go/sdp"
 )
 
@@ -168,6 +169,7 @@ func main() {
 
 	r := gin.Default()
 
+	r.Use(cors.Default())
 	r.GET("/test", func(c *gin.Context) {
 		c.String(http.StatusOK, "Hello World")
 	})
