@@ -1,0 +1,32 @@
+server:
+  port: 5000
+
+  
+cluster:
+  origins:
+    - 10.0.10.25:5000
+
+capability:
+  audio:
+    codecs:
+      - opus
+    extensions:
+      - urn:ietf:params:rtp-hdrext:ssrc-audio-level
+      - http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
+  video:
+    codecs:
+      - h264
+      - vp8
+    rtx: true
+    rtcpfbc:
+      - id: transport-cc
+      - id: ccm
+        params: [fir]
+      - id: nack
+      - id: nack
+        params: [pli]
+    extensions:
+      - http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time
+      - http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
+        
+      
