@@ -43,7 +43,7 @@ var Capabilities = map[string]*sdp.Capability{
 	},
 }
 
-var routers = map[string]*MediaRouter{}
+
 var endpoint = mediaserver.NewEndpoint("127.0.0.1")
 
 
@@ -64,7 +64,8 @@ func publish(c *gin.Context) {
 
 	_,answer := router.CreatePublisher(data.Sdp)
 
-	routers[streamID] = router
+
+	sessions.Add(router)
 
 	c.JSON(200,gin.H{
 		"s":10000,
@@ -79,9 +80,9 @@ func unpublish(c *gin.Context) {
 
 	streamID := c.Param("streamID")
 
-	router,ok := routers[streamID]
+	router := sessions.Get(streamID)
 
-	if !ok {
+	if router == nil {
 		c.JSON(200, gin.H{
 			"s": 10000,
 			"e":"stream does not exist",
@@ -112,9 +113,9 @@ func unplay(c *gin.Context) {
 		return
 	}
 
-	router,ok := routers[streamID]
+	router := sessions.Get(streamID)
 
-	if !ok {
+	if router == nil {
 		c.JSON(200, gin.H{
 			"s": 10000,
 			"e":"stream does not exist",
@@ -144,9 +145,9 @@ func play(c *gin.Context) {
 		return
 	}
 
-	router,ok := routers[streamID]
+	router := sessions.Get(streamID)
 
-	if !ok {
+	if router == nil {
 		c.JSON(200,gin.H{"s":10002, "e":"can not find stream"})
 		return
 	}
