@@ -4,6 +4,7 @@ import (
 	"github.com/gofrs/uuid"
 	mediaserver "github.com/notedit/media-server-go"
 	"github.com/notedit/media-server-go/sdp"
+	"sync"
 )
 
 type Publisher struct {
@@ -48,18 +49,21 @@ func (s *Subscriber) GetTransport() *mediaserver.Transport {
 }
 
 type MediaRouter struct {
+	origin       bool
 	routerID     string
 	capabilities map[string]*sdp.Capability
 	endpoint     *mediaserver.Endpoint
 	publisher    *Publisher
 	subscribers  map[string]*Subscriber
+	sync.Mutex
 }
 
-func NewMediaRouter(routerID string, endpoint *mediaserver.Endpoint, capabilities map[string]*sdp.Capability) *MediaRouter {
+func NewMediaRouter(routerID string, endpoint *mediaserver.Endpoint, capabilities map[string]*sdp.Capability, origin bool) *MediaRouter {
 	router := &MediaRouter{}
 	router.routerID = routerID
 	router.endpoint = endpoint
 	router.capabilities = capabilities
+	router.origin = origin
 
 	router.subscribers = make(map[string]*Subscriber)
 	return router
@@ -93,7 +97,7 @@ func (r *MediaRouter) CreatePublisher(sdpStr string) (*Publisher, string) {
 	incoming := transport.CreateIncomingStream(streamInfo)
 
 	r.publisher = &Publisher{
-		id:streamInfo.GetID(),
+		id:        streamInfo.GetID(),
 		incoming:  incoming,
 		transport: transport,
 	}
@@ -132,13 +136,15 @@ func (r *MediaRouter) CreateSubscriber(sdpStr string, subscriberId ...string) (*
 	outgoing.AttachTo(r.publisher.incoming)
 
 	subscriber := &Subscriber{
-		id: subId,
+		id:          subId,
 		publisherId: r.publisher.GetID(),
-		outgoing:  outgoing,
-		transport: transport,
+		outgoing:    outgoing,
+		transport:   transport,
 	}
 
+	r.Lock()
 	r.subscribers[subId] = subscriber
+	r.Unlock()
 
 	return subscriber, answer.String()
 }
@@ -151,11 +157,14 @@ func (r *MediaRouter) StopSubscriber(subscriberId string) {
 	subscriber.outgoing.Stop()
 	subscriber.transport.Stop()
 
+	r.Lock()
 	delete(r.subscribers, subscriberId)
+	r.Unlock()
 }
 
 func (r *MediaRouter) Stop() {
-
+	r.Lock()
+	defer r.Unlock()
 	if r.publisher != nil {
 		r.publisher.incoming.Stop()
 		r.publisher.transport.Stop()
