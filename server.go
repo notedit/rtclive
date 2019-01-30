@@ -63,7 +63,9 @@ var Capabilities = map[string]*sdp.Capability{
 	},
 }
 
-var endpoint = mediaserver.NewEndpoint("127.0.0.1")
+var endpoint *mediaserver.Endpoint
+var config  *ConfigStruct
+
 
 func publish(c *gin.Context) {
 
@@ -316,9 +318,18 @@ func onmessage(s *melody.Session, msg []byte) {
 
 func main() {
 
-	r := gin.Default()
+	var err error
+	config,err = LoadConfig("./config.yaml")
 
+	if err != nil {
+		panic(err)
+	}
+
+	endpoint = mediaserver.NewEndpoint(config.Media.Endpoint)
+
+	r := gin.Default()
 	r.Use(cors.Default())
+
 	r.GET("/test", func(c *gin.Context) {
 		c.String(http.StatusOK, "Hello World")
 	})
