@@ -19,7 +19,8 @@ import (
 
 
 func init () {
-	runtime.GOMAXPROCS(runtime.NumCPU())
+	//runtime.GOMAXPROCS(runtime.NumCPU())
+	runtime.GOMAXPROCS(1)
 }
 
 type Message struct {
@@ -330,7 +331,10 @@ func main() {
 		panic(err)
 	}
 
+
 	endpoint = mediaserver.NewEndpoint(config.Media.Endpoint)
+
+	gin.SetMode(gin.ReleaseMode)
 
 	r := gin.Default()
 	r.Use(cors.Default())
