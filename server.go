@@ -2,12 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/notedit/media-server-go"
 	"net/http"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/notedit/media-server-go/sdp"
 	"gopkg.in/olahol/melody.v1"
 )
 
@@ -29,39 +29,6 @@ type ResponseData struct {
 	SubscriberID string `json:"subscriberId,omitempty"`
 }
 
-var Capabilities = map[string]*sdp.Capability{
-	"audio": &sdp.Capability{
-		Codecs: []string{"opus"},
-	},
-	"video": &sdp.Capability{
-		Codecs: []string{"vp8"},
-		Rtx:    true,
-		Rtcpfbs: []*sdp.RtcpFeedback{
-			&sdp.RtcpFeedback{
-				ID: "goog-remb",
-			},
-			&sdp.RtcpFeedback{
-				ID: "transport-cc",
-			},
-			&sdp.RtcpFeedback{
-				ID:     "ccm",
-				Params: []string{"fir"},
-			},
-			&sdp.RtcpFeedback{
-				ID:     "nack",
-				Params: []string{"pli"},
-			},
-		},
-		Extensions: []string{
-			"urn:3gpp:video-orientation",
-			"http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01",
-			"http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time",
-			"urn:ietf:params:rtp-hdrext:toffse",
-			"urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id",
-			"urn:ietf:params:rtp-hdrext:sdes:mid",
-		},
-	},
-}
 
 var endpoint *mediaserver.Endpoint
 var config  *ConfigStruct
@@ -80,7 +47,7 @@ func publish(c *gin.Context) {
 		return
 	}
 
-	router := NewMediaRouter(streamID, endpoint, Capabilities, true)
+	router := NewMediaRouter(streamID, endpoint, config.GetCapabilitys(), true)
 
 	_, answer := router.CreatePublisher(data.Sdp)
 
@@ -206,9 +173,13 @@ func pull(c *gin.Context) {
 
 func onconnect(s *melody.Session) {
 	sessions.Add(s)
+	fmt.Println("onconnect")
 }
 
 func ondisconnect(s *melody.Session) {
+
+	fmt.Println("ondisconnect")
+
 	defer sessions.Remove(s)
 
 	sessionInfo := sessions.Get(s)
@@ -234,16 +205,17 @@ func ondisconnect(s *melody.Session) {
 func onmessage(s *melody.Session, msg []byte) {
 
 	var message Message
-
 	err := json.Unmarshal(msg, &message)
-
 	if err != nil {
+		fmt.Println("error", err)
 		return
 	}
 
+	fmt.Println("message", message.Cmd, message.StreamID)
+
 	switch message.Cmd {
 	case "publish":
-		router := NewMediaRouter(message.StreamID, endpoint, Capabilities,true)
+		router := NewMediaRouter(message.StreamID, endpoint, config.GetCapabilitys(),true)
 		_, answer := router.CreatePublisher(message.Sdp)
 		routers.Add(router)
 		sessionInfo := sessions.Get(s)
@@ -343,8 +315,14 @@ func main() {
 
 	mrouter := melody.New()
 
+	mrouter.Config.MaxMessageSize = 1024 * 10
+	mrouter.Config.MessageBufferSize = 1024 * 5
+
 	r.GET("/ws", func(c *gin.Context) {
-		mrouter.HandleRequest(c.Writer, c.Request)
+		err := mrouter.HandleRequest(c.Writer, c.Request)
+		if err != nil {
+			fmt.Println(err)
+		}
 	})
 
 	mrouter.HandleConnect(onconnect)

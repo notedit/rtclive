@@ -10,7 +10,9 @@ type Routers struct {
 	sync.Mutex
 }
 
-var routers *Routers = new(Routers)
+var routers *Routers = &Routers{
+	routers:map[string]*MediaRouter{},
+}
 
 func (r *Routers) Get(routerId string) *MediaRouter {
 	r.Lock()
@@ -40,7 +42,9 @@ type Sessions struct {
 	sync.Mutex
 }
 
-var sessions *Sessions = new(Sessions)
+var sessions *Sessions = &Sessions{
+	sessions:map[*melody.Session]*SessionInfo{},
+}
 
 func (s *Sessions) Add(session *melody.Session) {
 	s.Lock()
