@@ -13,6 +13,15 @@ type Publisher struct {
 	transport *mediaserver.Transport
 }
 
+func NewPublisher(incoming *mediaserver.IncomingStream, transport *mediaserver.Transport) *Publisher {
+	publisher := &Publisher{
+		id: incoming.GetID(),
+		incoming:incoming,
+		transport:transport,
+	}
+	return publisher
+}
+
 func (p *Publisher) GetID() string {
 	return p.id
 }
@@ -49,12 +58,13 @@ func (s *Subscriber) GetTransport() *mediaserver.Transport {
 }
 
 type MediaRouter struct {
-	origin       bool
 	routerID     string
 	capabilities map[string]*sdp.Capability
 	endpoint     *mediaserver.Endpoint
 	publisher    *Publisher
 	subscribers  map[string]*Subscriber
+	originUrl    string
+	origin       bool
 	sync.Mutex
 }
 
@@ -73,8 +83,28 @@ func (r *MediaRouter) GetID() string {
 	return r.routerID
 }
 
+func (r *MediaRouter) IsOrgin() bool {
+	return r.origin
+}
+
 func (r *MediaRouter) GetPublisher() *Publisher {
 	return r.publisher
+}
+
+func (r *MediaRouter) SetPublisher(publisher *Publisher) {
+	r.publisher = publisher
+}
+
+func (r *MediaRouter) SetOriginUrl(origin string) {
+	r.originUrl = origin
+}
+
+func (s *MediaRouter) GetOriginUrl() string {
+	return s.originUrl
+}
+
+func (s *MediaRouter) GetSubscribers() map[string]*Subscriber {
+	return s.subscribers
 }
 
 func (r *MediaRouter) CreatePublisher(sdpStr string) (*Publisher, string) {
@@ -105,7 +135,7 @@ func (r *MediaRouter) CreatePublisher(sdpStr string) (*Publisher, string) {
 	return r.publisher, answer.String()
 }
 
-func (r *MediaRouter) CreateSubscriber(sdpStr string, subscriberId ...string) (*Subscriber, string) {
+func (r *MediaRouter) CreateSubscriber(sdpStr string) (*Subscriber, string) {
 	offer, err := sdp.Parse(sdpStr)
 	if err != nil {
 		panic(err)
@@ -121,12 +151,9 @@ func (r *MediaRouter) CreateSubscriber(sdpStr string, subscriberId ...string) (*
 
 	transport.SetLocalProperties(answer.GetMedia("audio"), answer.GetMedia("video"))
 
-	var subId string
-	if len(subscriberId) == 1 {
-		subId = subscriberId[0]
-	} else {
-		subId = uuid.Must(uuid.NewV4()).String()
-	}
+
+	subId := uuid.Must(uuid.NewV4()).String()
+
 
 	audio := len(r.publisher.incoming.GetAudioTracks()) > 0
 	video := len(r.publisher.incoming.GetVideoTracks()) > 0
