@@ -173,6 +173,8 @@ func (r *MediaRouter) CreateSubscriber(sdpStr string) (*Subscriber, string) {
 	r.subscribers[subId] = subscriber
 	r.Unlock()
 
+	answer.AddStream(outgoing.GetStreamInfo())
+
 	return subscriber, answer.String()
 }
 

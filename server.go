@@ -66,6 +66,8 @@ func pull(c *gin.Context) {
 
 	subscriber, answer := router.CreateSubscriber(data.Sdp)
 
+	fmt.Println("answer", answer)
+
 	c.JSON(200, gin.H{"s":10000, "d": map[string]string{
 		"sdp":answer,
 		"subscriberId":subscriber.GetID(),
@@ -273,6 +275,21 @@ func pullStream(streamID string, origins []string) (*MediaRouter,error){
 		}
 
 		answer,err := sdp.Parse(answerStr)
+
+		if err != nil {
+			fmt.Println("parse error", err)
+			panic(err)
+		}
+
+		fmt.Println(answer)
+		fmt.Println(answer.GetAudioMedia())
+		fmt.Println(answer.GetVideoMedia())
+
+		if answer.GetFirstStream() == nil {
+			panic("can not get stream info")
+		}
+		fmt.Println(answer.GetFirstStream())
+
 
 		transport := endpoint.CreateTransport(answer, offer, true)
 
