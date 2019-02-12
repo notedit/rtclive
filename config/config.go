@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type ConfigStruct struct {
+type Config struct {
 	Server struct {
 		Port int    `yaml:"port"`
 		Host string `yaml:"host"`
@@ -37,16 +37,19 @@ type ConfigStruct struct {
 			} `yaml:"rtcpfbc,flow"`
 		} `yaml:"video"`
 	}
+
+	AudioCapability *sdp.Capability
+	VideoCapability *sdp.Capability
 }
 
-func LoadConfig(filePath string) (*ConfigStruct, error) {
+func LoadConfig(filePath string) (*Config, error) {
 
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	var config ConfigStruct
+	var config Config
 	err = yaml.Unmarshal(data, &config)
 	if err != nil {
 		return nil, err
@@ -56,37 +59,30 @@ func LoadConfig(filePath string) (*ConfigStruct, error) {
 		return nil, errors.New("capability can not be empty")
 	}
 
-	return &config, nil
-}
-
-func (c *ConfigStruct) GetCapabilitys() map[string]*sdp.Capability {
-
-	capabilitys := map[string]*sdp.Capability{}
-
-	if c.Capability.Audio.Codecs != nil {
+	if config.Capability.Audio.Codecs != nil {
 		audioCapability := &sdp.Capability{
-			Codecs:     c.Capability.Audio.Codecs,
-			Extensions: c.Capability.Audio.Extensions,
+			Codecs:     config.Capability.Audio.Codecs,
+			Extensions: config.Capability.Audio.Extensions,
 		}
-		capabilitys["audio"] = audioCapability
+		config.AudioCapability = audioCapability
 	}
 
-	if c.Capability.Video.Codecs != nil {
+	if config.Capability.Video.Codecs != nil {
 		rtcpfbs := make([]*sdp.RtcpFeedback, 0)
-		for _, rtcpfb := range c.Capability.Video.Rtcpfbcs {
+		for _, rtcpfb := range config.Capability.Video.Rtcpfbcs {
 			rtcpfbs = append(rtcpfbs, &sdp.RtcpFeedback{
 				ID:     rtcpfb.ID,
 				Params: rtcpfb.Params,
 			})
 		}
 		videoCapability := &sdp.Capability{
-			Codecs:     c.Capability.Video.Codecs,
-			Rtx:        c.Capability.Video.Rtx,
-			Extensions: c.Capability.Video.Extensions,
+			Codecs:     config.Capability.Video.Codecs,
+			Rtx:        config.Capability.Video.Rtx,
+			Extensions: config.Capability.Video.Extensions,
 			Rtcpfbs:    rtcpfbs,
 		}
-		capabilitys["video"] = videoCapability
+		config.VideoCapability = videoCapability
 	}
 
-	return capabilitys
+	return &config, nil
 }

@@ -4,14 +4,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/nareix/joy4/av"
+	"github.com/nareix/joy4/av/avutil"
 	"runtime"
 	"strconv"
 	"strings"
 
+	cconfig "github.com/notedit/RTCLive/config"
+	"github.com/notedit/RTCLive/rtmpstreamer"
+
 	"github.com/imroc/req"
-	mediaserver "github.com/notedit/media-server-go"
+	"github.com/notedit/media-server-go"
 	"github.com/notedit/media-server-go/sdp"
-	melody "gopkg.in/olahol/melody.v1"
+	"gopkg.in/olahol/melody.v1"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -41,7 +46,7 @@ type ResponseData struct {
 }
 
 var endpoint *mediaserver.Endpoint
-var config *ConfigStruct
+var config *cconfig.Config
 
 func pull(c *gin.Context) {
 
@@ -145,7 +150,11 @@ func onmessage(s *melody.Session, msg []byte) {
 
 	switch message.Cmd {
 	case "publish":
-		router := NewMediaRouter(message.StreamID, endpoint, config.GetCapabilitys(), true)
+		capabilitys := map[string]*sdp.Capability{
+			"video": config.VideoCapability,
+			"audio": config.AudioCapability,
+		}
+		router := NewMediaRouter(message.StreamID, endpoint, capabilitys, true)
 		_, answer := router.CreatePublisher(message.Sdp)
 		routers.Add(router)
 		sessionInfo := sessions.Get(s)
@@ -230,7 +239,7 @@ func onmessage(s *melody.Session, msg []byte) {
 
 func pullStream(streamID string, origins []string) (*MediaRouter, error) {
 
-	offer := endpoint.CreateOffer(config.GetCapabilitys()["video"], config.GetCapabilitys()["audio"])
+	offer := endpoint.CreateOffer(config.VideoCapability, config.AudioCapability)
 
 	for _, origin := range origins {
 		var requestUrl string
@@ -295,7 +304,12 @@ func pullStream(streamID string, origins []string) (*MediaRouter, error) {
 
 		incoming := transport.CreateIncomingStream(streamInfo)
 
-		router := NewMediaRouter(streamID, endpoint, config.GetCapabilitys(), false)
+		capabilitys := map[string]*sdp.Capability{
+			"video": config.VideoCapability,
+			"audio": config.AudioCapability,
+		}
+
+		router := NewMediaRouter(streamID, endpoint, capabilitys, false)
 
 		publisher := NewPublisher(incoming, transport)
 
@@ -340,13 +354,62 @@ func startRtmp() {
 	server.HandlePublish = func(conn *rtmp.Conn) {
 
 		//streamId := conn.URL.Path
+		streaminfo := strings.Split(conn.URL.Path, "/")
+		if len(streaminfo) != 2 {
+			panic("rtmpurl invalide")
+		}
+
+		streamName := streaminfo[1]
+
+		rtmpStreamer := rtmpstreamer.NewRtmpStreamer(streamName, config.AudioCapability, config.VideoCapability)
+
+		avutil.CopyFile(rtmpStreamer, conn)
+
+
+		writeheader := make(chan bool)
+		done := make(chan bool)
+
+		go func() {
+			var streams []av.CodecData
+			var err error
+			if streams,err = conn.Streams(); err != nil {
+				fmt.Println(err)
+				done <- true
+				return
+			}
+
+			if err = rtmpStreamer.WriteHeader(streams); err != nil {
+				done <- true
+				return
+			} else {
+				writeheader <- true
+			}
+			if err = avutil.CopyPackets(rtmpStreamer, conn); err != nil {
+				fmt.Println(err)
+				done <- true
+				return
+			}
+
+		}()
+
+
+		for {
+			select {
+			case <- done:
+				break
+			case <- writeheader:
+				// todo 
+
+			}
+		}
+
 	}
 }
 
 func main() {
 
 	var err error
-	config, err = LoadConfig("./config.yaml")
+	config, err = cconfig.LoadConfig("./config.yaml")
 
 	if err != nil {
 		panic(err)

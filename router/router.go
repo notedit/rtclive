@@ -11,17 +11,45 @@ import (
 type Publisher struct {
 	id        string
 	incoming  *mediaserver.IncomingStream
+	videotrack *mediaserver.IncomingStreamTrack
+	audiotrack *mediaserver.IncomingStreamTrack
 	transport *mediaserver.Transport
 }
 
 func NewPublisher(incoming *mediaserver.IncomingStream, transport *mediaserver.Transport) *Publisher {
+
+	var videoTrack *mediaserver.IncomingStreamTrack
+	var audioTrack *mediaserver.IncomingStreamTrack
+
+	if len(incoming.GetVideoTracks()) > 0 {
+		videoTrack = incoming.GetVideoTracks()[0]
+	}
+
+	if len(incoming.GetAudioTracks()) > 0 {
+		audioTrack = incoming.GetAudioTracks()[0]
+	}
+
 	publisher := &Publisher{
 		id:        incoming.GetID(),
 		incoming:  incoming,
+		videotrack:videoTrack,
+		audiotrack:audioTrack,
 		transport: transport,
 	}
 	return publisher
 }
+
+func NewPublisherWithID(ID string, videotrack *mediaserver.IncomingStreamTrack, audiotrack *mediaserver.IncomingStreamTrack, transport *mediaserver.Transport) *Publisher {
+
+	publisher := &Publisher{
+		id:        ID,
+		videotrack:videotrack,
+		audiotrack:audiotrack,
+		transport: transport,
+	}
+	return publisher
+}
+
 
 func (p *Publisher) GetID() string {
 	return p.id
@@ -29,6 +57,14 @@ func (p *Publisher) GetID() string {
 
 func (p *Publisher) GetStream() *mediaserver.IncomingStream {
 	return p.incoming
+}
+
+func (p *Publisher) GetVideoTrack() *mediaserver.IncomingStreamTrack {
+	return p.videotrack
+}
+
+func (p *Publisher) GetAudioTrack() *mediaserver.IncomingStreamTrack {
+	return p.audiotrack
 }
 
 func (p *Publisher) GetTransport() *mediaserver.Transport {
@@ -127,9 +163,22 @@ func (r *MediaRouter) CreatePublisher(sdpStr string) (*Publisher, string) {
 	streamInfo := offer.GetFirstStream()
 	incoming := transport.CreateIncomingStream(streamInfo)
 
+	var videoTrack *mediaserver.IncomingStreamTrack
+	var audioTrack *mediaserver.IncomingStreamTrack
+
+	if len(incoming.GetVideoTracks()) > 0 {
+		videoTrack = incoming.GetVideoTracks()[0]
+	}
+
+	if len(incoming.GetAudioTracks()) > 0 {
+		audioTrack = incoming.GetAudioTracks()[0]
+	}
+
 	r.publisher = &Publisher{
 		id:        streamInfo.GetID(),
 		incoming:  incoming,
+		videotrack:videoTrack,
+		audiotrack:audioTrack,
 		transport: transport,
 	}
 
@@ -154,12 +203,20 @@ func (r *MediaRouter) CreateSubscriber(sdpStr string) (*Subscriber, string) {
 
 	subId := uuid.Must(uuid.NewV4()).String()
 
-	audio := len(r.publisher.incoming.GetAudioTracks()) > 0
-	video := len(r.publisher.incoming.GetVideoTracks()) > 0
+	audio := r.publisher.audiotrack != nil
+	video := r.publisher.videotrack != nil
 
 	outgoing := transport.CreateOutgoingStreamWithID(subId, audio, video)
 
 	outgoing.AttachTo(r.publisher.incoming)
+
+	if audio {
+		outgoing.GetAudioTracks()[0].AttachTo(r.publisher.audiotrack)
+	}
+
+	if video {
+		outgoing.GetVideoTracks()[0].AttachTo(r.publisher.videotrack)
+	}
 
 	subscriber := &Subscriber{
 		id:          subId,
