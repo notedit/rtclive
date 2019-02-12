@@ -7,6 +7,10 @@ media:
   endpoint: 127.0.0.1
 
 
+rtmp:
+  port: 1935
+
+
 cluster:
   origins:
     - 127.0.0.1:5001

@@ -4,22 +4,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/imroc/req"
-	"github.com/notedit/media-server-go/sdp"
-	"gopkg.in/olahol/melody.v1"
-	"net/http"
 	"runtime"
 	"strconv"
 	"strings"
 
+	"github.com/imroc/req"
+	mediaserver "github.com/notedit/media-server-go"
+	"github.com/notedit/media-server-go/sdp"
+	melody "gopkg.in/olahol/melody.v1"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/notedit/media-server-go"
+	"github.com/nareix/joy4/format/rtmp"
 )
 
-
-func init () {
-	//runtime.GOMAXPROCS(runtime.NumCPU())
+func init() {
 	runtime.GOMAXPROCS(1)
 }
 
@@ -44,7 +43,6 @@ type ResponseData struct {
 var endpoint *mediaserver.Endpoint
 var config *ConfigStruct
 
-
 func pull(c *gin.Context) {
 
 	var data struct {
@@ -68,21 +66,21 @@ func pull(c *gin.Context) {
 
 	fmt.Println("answer", answer)
 
-	c.JSON(200, gin.H{"s":10000, "d": map[string]string{
-		"sdp":answer,
-		"subscriberId":subscriber.GetID(),
+	c.JSON(200, gin.H{"s": 10000, "d": map[string]string{
+		"sdp":          answer,
+		"subscriberId": subscriber.GetID(),
 	}})
 }
 
 func unpull(c *gin.Context) {
 
 	var data struct {
-		StreamID string `json:"streamId"`
+		StreamID     string `json:"streamId"`
 		SubscriberID string `json:"subscriberId"`
 	}
 
 	if err := c.ShouldBind(&data); err != nil {
-		c.JSON(200, gin.H{"s":10001, "e": err})
+		c.JSON(200, gin.H{"s": 10001, "e": err})
 		return
 	}
 
@@ -95,7 +93,7 @@ func unpull(c *gin.Context) {
 
 	router.StopSubscriber(data.SubscriberID)
 
-	c.JSON(200, gin.H{"s":10000, "d": map[string]string{}})
+	c.JSON(200, gin.H{"s": 10000, "d": map[string]string{}})
 }
 
 func onconnect(s *melody.Session) {
@@ -127,7 +125,7 @@ func ondisconnect(s *melody.Session) {
 			router.StopSubscriber(sessionInfo.SubscriberID)
 
 			if !router.IsOrgin() && len(router.subscribers) == 0 {
-				unpullStream(sessionInfo.StreamID, router.GetPublisher().GetID() ,router.GetOriginUrl())
+				unpullStream(sessionInfo.StreamID, router.GetPublisher().GetID(), router.GetOriginUrl())
 			}
 		}
 
@@ -181,7 +179,7 @@ func onmessage(s *melody.Session, msg []byte) {
 		if router == nil {
 			if config.Cluster.Origins != nil {
 				var err error
-				router,err = pullStream(message.StreamID,config.Cluster.Origins)
+				router, err = pullStream(message.StreamID, config.Cluster.Origins)
 				if err != nil {
 					fmt.Println(err)
 				}
@@ -230,13 +228,11 @@ func onmessage(s *melody.Session, msg []byte) {
 	}
 }
 
-
-
-func pullStream(streamID string, origins []string) (*MediaRouter,error){
+func pullStream(streamID string, origins []string) (*MediaRouter, error) {
 
 	offer := endpoint.CreateOffer(config.GetCapabilitys()["video"], config.GetCapabilitys()["audio"])
 
-	for _,origin := range origins {
+	for _, origin := range origins {
 		var requestUrl string
 		if !strings.HasPrefix(origin, "http") {
 			requestUrl = "http://" + origin + "/pull"
@@ -244,9 +240,9 @@ func pullStream(streamID string, origins []string) (*MediaRouter,error){
 			requestUrl = origin + "/pull"
 		}
 
-		res,err := req.Post(requestUrl, req.BodyJSON(map[string]string{
+		res, err := req.Post(requestUrl, req.BodyJSON(map[string]string{
 			"streamId": streamID,
-			"sdp":offer.String(),
+			"sdp":      offer.String(),
 		}))
 
 		if err != nil {
@@ -255,8 +251,8 @@ func pullStream(streamID string, origins []string) (*MediaRouter,error){
 		}
 
 		var ret struct {
-			Status  int `json:"s"`
-			Data  map[string]string `json:"d"`
+			Status int               `json:"s"`
+			Data   map[string]string `json:"d"`
 		}
 
 		err = res.ToJSON(&ret)
@@ -274,7 +270,7 @@ func pullStream(streamID string, origins []string) (*MediaRouter,error){
 			continue
 		}
 
-		answer,err := sdp.Parse(answerStr)
+		answer, err := sdp.Parse(answerStr)
 
 		if err != nil {
 			fmt.Println("parse error", err)
@@ -290,19 +286,18 @@ func pullStream(streamID string, origins []string) (*MediaRouter,error){
 		}
 		fmt.Println(answer.GetFirstStream())
 
-
 		transport := endpoint.CreateTransport(answer, offer, true)
 
-		transport.SetLocalProperties(offer.GetAudioMedia(),offer.GetVideoMedia())
+		transport.SetLocalProperties(offer.GetAudioMedia(), offer.GetVideoMedia())
 		transport.SetRemoteProperties(answer.GetAudioMedia(), answer.GetVideoMedia())
 
 		streamInfo := answer.GetFirstStream()
 
 		incoming := transport.CreateIncomingStream(streamInfo)
 
-		router := NewMediaRouter(streamID,endpoint,config.GetCapabilitys(), false)
+		router := NewMediaRouter(streamID, endpoint, config.GetCapabilitys(), false)
 
-		publisher := NewPublisher(incoming,transport)
+		publisher := NewPublisher(incoming, transport)
 
 		router.SetPublisher(publisher)
 
@@ -314,9 +309,7 @@ func pullStream(streamID string, origins []string) (*MediaRouter,error){
 	return nil, errors.New("can not find stream")
 }
 
-
-
-func unpullStream(streamID string, subscriberID string,origin string) {
+func unpullStream(streamID string, subscriberID string, origin string) {
 
 	var requestUrl string
 	if !strings.HasPrefix(origin, "http") {
@@ -325,8 +318,8 @@ func unpullStream(streamID string, subscriberID string,origin string) {
 		requestUrl = origin + "/unpull"
 	}
 
-	_,err := req.Post(requestUrl, req.BodyJSON(map[string]string{
-		"streamId": streamID,
+	_, err := req.Post(requestUrl, req.BodyJSON(map[string]string{
+		"streamId":     streamID,
 		"subscriberId": subscriberID,
 	}))
 
@@ -338,6 +331,17 @@ func unpullStream(streamID string, subscriberID string,origin string) {
 	return
 }
 
+func startRtmp() {
+
+	server := &rtmp.Server{}
+
+	server.HandlePlay = func(conn *rtmp.Conn) {}
+
+	server.HandlePublish = func(conn *rtmp.Conn) {
+
+		//streamId := conn.URL.Path
+	}
+}
 
 func main() {
 
@@ -348,32 +352,21 @@ func main() {
 		panic(err)
 	}
 
-
 	endpoint = mediaserver.NewEndpoint(config.Media.Endpoint)
 
 	gin.SetMode(gin.ReleaseMode)
-
 	r := gin.Default()
 	r.Use(cors.Default())
 
-	r.GET("/test", func(c *gin.Context) {
-		c.String(http.StatusOK, "Hello World")
-	})
-
-
 	r.POST("/pull", pull)
-	r.POST("unpull", unpull)
-
+	r.POST("/unpull", unpull)
 
 	mrouter := melody.New()
 	mrouter.Config.MaxMessageSize = 1024 * 10
 	mrouter.Config.MessageBufferSize = 1024 * 5
 
 	r.GET("/ws", func(c *gin.Context) {
-		err := mrouter.HandleRequest(c.Writer, c.Request)
-		if err != nil {
-			fmt.Println(err)
-		}
+		mrouter.HandleRequest(c.Writer, c.Request)
 	})
 
 	mrouter.HandleConnect(onconnect)

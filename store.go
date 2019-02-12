@@ -1,8 +1,9 @@
 package main
 
 import (
-	"gopkg.in/olahol/melody.v1"
 	"sync"
+
+	melody "gopkg.in/olahol/melody.v1"
 )
 
 type Routers struct {
@@ -11,7 +12,7 @@ type Routers struct {
 }
 
 var routers *Routers = &Routers{
-	routers:map[string]*MediaRouter{},
+	routers: map[string]*MediaRouter{},
 }
 
 func (r *Routers) Get(routerId string) *MediaRouter {
@@ -43,7 +44,7 @@ type Sessions struct {
 }
 
 var sessions *Sessions = &Sessions{
-	sessions:map[*melody.Session]*SessionInfo{},
+	sessions: map[*melody.Session]*SessionInfo{},
 }
 
 func (s *Sessions) Add(session *melody.Session) {
