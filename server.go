@@ -4,19 +4,23 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/nareix/joy4/av"
-	"github.com/nareix/joy4/av/avutil"
 	"runtime"
 	"strconv"
 	"strings"
 
+	"github.com/nareix/joy4/av"
+	"github.com/nareix/joy4/av/avutil"
+
+	melody "gopkg.in/olahol/melody.v1"
+
 	cconfig "github.com/notedit/RTCLive/config"
+	mrouter "github.com/notedit/RTCLive/router"
 	"github.com/notedit/RTCLive/rtmpstreamer"
+	"github.com/notedit/RTCLive/store"
 
 	"github.com/imroc/req"
-	"github.com/notedit/media-server-go"
+	mediaserver "github.com/notedit/media-server-go"
 	"github.com/notedit/media-server-go/sdp"
-	"gopkg.in/olahol/melody.v1"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -60,7 +64,7 @@ func pull(c *gin.Context) {
 		return
 	}
 
-	router := routers.Get(data.StreamID)
+	router := store.GetRouter(data.StreamID)
 
 	if router == nil {
 		c.JSON(200, gin.H{"s": 10002, "e": "can not find stream"})
@@ -89,7 +93,7 @@ func unpull(c *gin.Context) {
 		return
 	}
 
-	router := routers.Get(data.StreamID)
+	router := store.GetRouter(data.StreamID)
 
 	if router == nil {
 		c.JSON(200, gin.H{"s": 10002, "e": "can not find stream"})
@@ -102,7 +106,8 @@ func unpull(c *gin.Context) {
 }
 
 func onconnect(s *melody.Session) {
-	sessions.Add(s)
+
+	store.AddSession(s)
 	fmt.Println("onconnect")
 }
 
@@ -110,26 +115,26 @@ func ondisconnect(s *melody.Session) {
 
 	fmt.Println("ondisconnect")
 
-	defer sessions.Remove(s)
+	defer store.RemoveSession(s)
 
-	sessionInfo := sessions.Get(s)
+	sessionInfo := store.GetSession(s)
 
 	if sessionInfo.StreamID == "" {
 		return
 	}
 
 	if sessionInfo.SubscriberID == "" {
-		router := routers.Get(sessionInfo.StreamID)
+		router := store.GetRouter(sessionInfo.StreamID)
 		if router != nil {
 			router.Stop()
-			routers.Remove(router)
+			store.RemoveRouter(router)
 		}
 	} else {
-		router := routers.Get(sessionInfo.StreamID)
+		router := store.GetRouter(sessionInfo.StreamID)
 		if router != nil {
 			router.StopSubscriber(sessionInfo.SubscriberID)
 
-			if !router.IsOrgin() && len(router.subscribers) == 0 {
+			if !router.IsOrgin() && len(router.GetSubscribers()) == 0 {
 				unpullStream(sessionInfo.StreamID, router.GetPublisher().GetID(), router.GetOriginUrl())
 			}
 		}
@@ -154,10 +159,10 @@ func onmessage(s *melody.Session, msg []byte) {
 			"video": config.VideoCapability,
 			"audio": config.AudioCapability,
 		}
-		router := NewMediaRouter(message.StreamID, endpoint, capabilitys, true)
+		router := mrouter.NewMediaRouter(message.StreamID, endpoint, capabilitys, true)
 		_, answer := router.CreatePublisher(message.Sdp)
-		routers.Add(router)
-		sessionInfo := sessions.Get(s)
+		store.AddRouter(router)
+		sessionInfo := store.GetSession(s)
 		sessionInfo.StreamID = message.StreamID
 		res, _ := json.Marshal(&Response{
 			Code: 0,
@@ -167,7 +172,7 @@ func onmessage(s *melody.Session, msg []byte) {
 		})
 		s.Write(res)
 	case "unpublish":
-		router := routers.Get(message.StreamID)
+		router := store.GetRouter(message.StreamID)
 		if router == nil {
 			res, _ := json.Marshal(&Response{
 				Code: 1,
@@ -175,16 +180,16 @@ func onmessage(s *melody.Session, msg []byte) {
 			s.Write(res)
 			return
 		}
-		defer routers.Remove(router)
+		defer store.RemoveRouter(router)
 		router.Stop()
-		sessionInfo := sessions.Get(s)
+		sessionInfo := store.GetSession(s)
 		sessionInfo.StreamID = ""
 		res, _ := json.Marshal(&Response{
 			Code: 0,
 		})
 		s.Write(res)
 	case "play":
-		router := routers.Get(message.StreamID)
+		router := store.GetRouter(message.StreamID)
 		if router == nil {
 			if config.Cluster.Origins != nil {
 				var err error
@@ -203,7 +208,7 @@ func onmessage(s *melody.Session, msg []byte) {
 			return
 		}
 		subscriber, answer := router.CreateSubscriber(message.Sdp)
-		sessionInfo := sessions.Get(s)
+		sessionInfo := store.GetSession(s)
 		sessionInfo.StreamID = message.StreamID
 		sessionInfo.SubscriberID = subscriber.GetID()
 		res, _ := json.Marshal(&Response{
@@ -215,7 +220,7 @@ func onmessage(s *melody.Session, msg []byte) {
 		})
 		s.Write(res)
 	case "unplay":
-		router := routers.Get(message.StreamID)
+		router := store.GetRouter(message.StreamID)
 		if router == nil {
 			res, _ := json.Marshal(&Response{
 				Code: 1,
@@ -224,7 +229,7 @@ func onmessage(s *melody.Session, msg []byte) {
 			return
 		}
 		router.StopSubscriber(message.SubscriberID)
-		sessionInfo := sessions.Get(s)
+		sessionInfo := store.GetSession(s)
 		sessionInfo.StreamID = ""
 		sessionInfo.SubscriberID = ""
 		res, _ := json.Marshal(&Response{
@@ -237,7 +242,7 @@ func onmessage(s *melody.Session, msg []byte) {
 	}
 }
 
-func pullStream(streamID string, origins []string) (*MediaRouter, error) {
+func pullStream(streamID string, origins []string) (*mrouter.MediaRouter, error) {
 
 	offer := endpoint.CreateOffer(config.VideoCapability, config.AudioCapability)
 
@@ -309,9 +314,9 @@ func pullStream(streamID string, origins []string) (*MediaRouter, error) {
 			"audio": config.AudioCapability,
 		}
 
-		router := NewMediaRouter(streamID, endpoint, capabilitys, false)
+		router := mrouter.NewMediaRouter(streamID, endpoint, capabilitys, false)
 
-		publisher := NewPublisher(incoming, transport)
+		publisher := mrouter.NewPublisher(incoming, transport)
 
 		router.SetPublisher(publisher)
 
@@ -365,14 +370,13 @@ func startRtmp() {
 
 		avutil.CopyFile(rtmpStreamer, conn)
 
-
 		writeheader := make(chan bool)
 		done := make(chan bool)
 
 		go func() {
 			var streams []av.CodecData
 			var err error
-			if streams,err = conn.Streams(); err != nil {
+			if streams, err = conn.Streams(); err != nil {
 				fmt.Println(err)
 				done <- true
 				return
@@ -392,13 +396,12 @@ func startRtmp() {
 
 		}()
 
-
 		for {
 			select {
-			case <- done:
+			case <-done:
 				break
-			case <- writeheader:
-				// todo 
+			case <-writeheader:
+				// todo
 
 			}
 		}
@@ -424,19 +427,19 @@ func main() {
 	r.POST("/pull", pull)
 	r.POST("/unpull", unpull)
 
-	mrouter := melody.New()
-	mrouter.Config.MaxMessageSize = 1024 * 10
-	mrouter.Config.MessageBufferSize = 1024 * 5
+	m := melody.New()
+	m.Config.MaxMessageSize = 1024 * 10
+	m.Config.MessageBufferSize = 1024 * 5
 
 	r.GET("/ws", func(c *gin.Context) {
-		mrouter.HandleRequest(c.Writer, c.Request)
+		m.HandleRequest(c.Writer, c.Request)
 	})
 
-	mrouter.HandleConnect(onconnect)
+	m.HandleConnect(onconnect)
 
-	mrouter.HandleDisconnect(ondisconnect)
+	m.HandleDisconnect(ondisconnect)
 
-	mrouter.HandleMessage(onmessage)
+	m.HandleMessage(onmessage)
 
 	r.Run(config.Server.Host + ":" + strconv.Itoa(config.Server.Port))
 }
