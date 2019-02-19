@@ -11,7 +11,7 @@ import (
 	"github.com/notedit/media-server-go/sdp"
 )
 
-var audio2rtp = "appsrc is-live=true do-timestamp=true name=appsrc ! faad ! audioconvert ! audioresample ! opusenc ! rtpopuspay pt=%d ! appsink name=appsink"
+var audio2rtp = "appsrc is-live=true do-timestamp=true name=appsrc ! faad ! audioconvert ! audioresample ! audio/x-raw,rate=48000 ! opusenc ! rtpopuspay pt=%d ! appsink name=appsink"
 var video2rtp = "appsrc is-live=true do-timestamp=true name=appsrc ! h264parse ! video/x-h264,stream-format=(string)byte-stream ! rtph264pay pt=%d ! appsink name=appsink"
 
 type RtmpStreamer struct {

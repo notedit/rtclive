@@ -11,9 +11,9 @@ rtmp:
   port: 1935
 
 
-cluster:
-  origins:
-    - 127.0.0.1:5001
+# cluster:
+#   origins:
+#     - 127.0.0.1:5001
 
 capability:
   audio:

@@ -9,11 +9,11 @@ import (
 )
 
 type Publisher struct {
-	id        string
-	incoming  *mediaserver.IncomingStream
+	id         string
+	incoming   *mediaserver.IncomingStream
 	videotrack *mediaserver.IncomingStreamTrack
 	audiotrack *mediaserver.IncomingStreamTrack
-	transport *mediaserver.Transport
+	transport  *mediaserver.Transport
 }
 
 func NewPublisher(incoming *mediaserver.IncomingStream, transport *mediaserver.Transport) *Publisher {
@@ -30,26 +30,24 @@ func NewPublisher(incoming *mediaserver.IncomingStream, transport *mediaserver.T
 	}
 
 	publisher := &Publisher{
-		id:        incoming.GetID(),
-		incoming:  incoming,
-		videotrack:videoTrack,
-		audiotrack:audioTrack,
-		transport: transport,
+		id:         incoming.GetID(),
+		incoming:   incoming,
+		videotrack: videoTrack,
+		audiotrack: audioTrack,
+		transport:  transport,
 	}
 	return publisher
 }
 
-func NewPublisherWithID(ID string, videotrack *mediaserver.IncomingStreamTrack, audiotrack *mediaserver.IncomingStreamTrack, transport *mediaserver.Transport) *Publisher {
+func NewPublisherWithID(ID string, videotrack *mediaserver.IncomingStreamTrack, audiotrack *mediaserver.IncomingStreamTrack) *Publisher {
 
 	publisher := &Publisher{
-		id:        ID,
-		videotrack:videotrack,
-		audiotrack:audiotrack,
-		transport: transport,
+		id:         ID,
+		videotrack: videotrack,
+		audiotrack: audiotrack,
 	}
 	return publisher
 }
-
 
 func (p *Publisher) GetID() string {
 	return p.id
@@ -69,6 +67,18 @@ func (p *Publisher) GetAudioTrack() *mediaserver.IncomingStreamTrack {
 
 func (p *Publisher) GetTransport() *mediaserver.Transport {
 	return p.transport
+}
+
+func (p *Publisher) Stop() {
+
+	if p.incoming != nil {
+		p.incoming.Stop()
+	}
+
+	if p.transport != nil {
+		p.transport.Stop()
+	}
+
 }
 
 type Subscriber struct {
@@ -92,6 +102,11 @@ func (s *Subscriber) GetStream() *mediaserver.OutgoingStream {
 
 func (s *Subscriber) GetTransport() *mediaserver.Transport {
 	return s.transport
+}
+
+func (s *Subscriber) Stop() {
+	s.outgoing.Stop()
+	s.transport.Stop()
 }
 
 type MediaRouter struct {
@@ -175,11 +190,11 @@ func (r *MediaRouter) CreatePublisher(sdpStr string) (*Publisher, string) {
 	}
 
 	r.publisher = &Publisher{
-		id:        streamInfo.GetID(),
-		incoming:  incoming,
-		videotrack:videoTrack,
-		audiotrack:audioTrack,
-		transport: transport,
+		id:         streamInfo.GetID(),
+		incoming:   incoming,
+		videotrack: videoTrack,
+		audiotrack: audioTrack,
+		transport:  transport,
 	}
 
 	return r.publisher, answer.String()
@@ -251,13 +266,11 @@ func (r *MediaRouter) Stop() {
 	r.Lock()
 	defer r.Unlock()
 	if r.publisher != nil {
-		r.publisher.incoming.Stop()
-		r.publisher.transport.Stop()
+		r.publisher.Stop()
 	}
 
 	for _, subscriber := range r.subscribers {
-		subscriber.outgoing.Stop()
-		subscriber.transport.Stop()
+		subscriber.Stop()
 	}
 
 	r.publisher = nil

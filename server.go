@@ -354,14 +354,18 @@ func startRtmp() {
 
 	server := &rtmp.Server{}
 
-	server.HandlePlay = func(conn *rtmp.Conn) {}
+	server.HandlePlay = func(conn *rtmp.Conn) {
+
+		fmt.Println("RTCLive does not support rtmp play")
+	}
 
 	server.HandlePublish = func(conn *rtmp.Conn) {
 
 		//streamId := conn.URL.Path
 		streaminfo := strings.Split(conn.URL.Path, "/")
 		if len(streaminfo) != 2 {
-			panic("rtmpurl invalide")
+			fmt.Println("rtmp url does not match, rtmp url should like rtmp://host:/appname/streamname")
+			return
 		}
 
 		streamName := streaminfo[1]
@@ -370,8 +374,10 @@ func startRtmp() {
 
 		avutil.CopyFile(rtmpStreamer, conn)
 
-		writeheader := make(chan bool)
+		header := make(chan bool)
 		done := make(chan bool)
+
+		var router *mrouter.MediaRouter
 
 		go func() {
 			var streams []av.CodecData
@@ -386,7 +392,7 @@ func startRtmp() {
 				done <- true
 				return
 			} else {
-				writeheader <- true
+				header <- true
 			}
 			if err = avutil.CopyPackets(rtmpStreamer, conn); err != nil {
 				fmt.Println(err)
@@ -400,10 +406,22 @@ func startRtmp() {
 			select {
 			case <-done:
 				break
-			case <-writeheader:
+			case <-header:
 				// todo
-
+				capabilitys := map[string]*sdp.Capability{
+					"video": config.VideoCapability,
+					"audio": config.AudioCapability,
+				}
+				router = mrouter.NewMediaRouter(streamName, endpoint, capabilitys, true)
+				publisher := mrouter.NewPublisherWithID(streamName, rtmpStreamer.GetVideoTrack(), rtmpStreamer.GetAuidoTrack())
+				router.SetPublisher(publisher)
+				store.AddRouter(router)
 			}
+		}
+
+		if router != nil {
+			store.RemoveRouter(router)
+			router.Stop()
 		}
 
 	}
