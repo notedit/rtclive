@@ -1,6 +1,7 @@
 package rtmpstreamer
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/nareix/joy4/av"
@@ -11,8 +12,8 @@ import (
 	"github.com/notedit/media-server-go/sdp"
 )
 
-var audio2rtp = "appsrc is-live=true do-timestamp=true name=appsrc ! faad ! audioconvert ! audioresample ! audio/x-raw,rate=48000 ! opusenc ! rtpopuspay pt=%d ! appsink name=appsink"
-var video2rtp = "appsrc is-live=true do-timestamp=true name=appsrc ! h264parse ! video/x-h264,stream-format=(string)byte-stream ! rtph264pay pt=%d ! appsink name=appsink"
+var audio2rtp = "appsrc do-timestamp=true is-live=true name=appsrc ! decodebin ! audioconvert ! audioresample ! opusenc ! rtpopuspay timestamp-offset=0 pt=%d ! appsink name=appsink"
+var video2rtp = "appsrc do-timestamp=true is-live=true name=appsrc ! h264parse ! rtph264pay timestamp-offset=0 config-interval=-1 pt=%d ! appsink name=appsink"
 
 type RtmpStreamer struct {
 	id             string
@@ -30,6 +31,11 @@ type RtmpStreamer struct {
 	audioout <-chan []byte
 
 	adtsheader []byte
+
+	spspps bool
+
+	videoWriteBuffer bytes.Buffer
+	audioWriteBuffer bytes.Buffer
 
 	streamer        *mediaserver.RawStreamer
 	videoSession    *mediaserver.RawStreamerSession
@@ -74,11 +80,8 @@ func (self *RtmpStreamer) WriteHeader(streams []av.CodecData) error {
 			self.videoout = self.videosink.Poll()
 
 			go func() {
-				for {
-					rtp, ok := <-self.videoout
-					if !ok {
-						break
-					}
+				for rtp := range self.videoout {
+					fmt.Println("video===", len(rtp))
 					self.videoSession.Push(rtp)
 				}
 			}()
@@ -107,11 +110,8 @@ func (self *RtmpStreamer) WriteHeader(streams []av.CodecData) error {
 			self.audioSession = self.streamer.CreateSession(audioMediaInfo)
 
 			go func() {
-				for {
-					rtp, ok := <-self.audioout
-					if !ok {
-						break
-					}
+				for rtp := range self.audioout {
+					fmt.Println("audio===", len(rtp))
 					self.audioSession.Push(rtp)
 				}
 			}()
@@ -135,26 +135,32 @@ func (self *RtmpStreamer) WritePacket(packet av.Packet) error {
 			nalus = append(nalus, self.videoCodecData.PPS())
 		}
 
-		pktnalus, _ := h264parser.SplitNALUs(packet.Data)
-		for _, nalu := range pktnalus {
-			nalus = append(nalus, nalu)
+		if !self.spspps {
+			self.videoWriteBuffer.Write([]byte{0, 0, 0, 1})
+			self.videoWriteBuffer.Write(self.videoCodecData.SPS())
+			self.videoWriteBuffer.Write([]byte{0, 0, 0, 1})
+			self.videoWriteBuffer.Write(self.videoCodecData.PPS())
+			self.videosrc.Push(self.videoWriteBuffer.Bytes())
+			self.videoWriteBuffer.Reset()
+			self.spspps = true
 		}
 
-		for _, nalu := range nalus {
-			naluc := []byte{0, 0, 0, 1}
-			naluc = append(naluc, nalu...)
-			self.videosrc.Push(naluc)
+		pktnalus, _ := h264parser.SplitNALUs(packet.Data)
+		for _, nalu := range pktnalus {
+			self.videoWriteBuffer.Write([]byte{0, 0, 0, 1})
+			self.videoWriteBuffer.Write(nalu)
+			self.videosrc.Push(self.videoWriteBuffer.Bytes())
+			self.videoWriteBuffer.Reset()
 		}
 	}
 
 	if stream.Type() == av.AAC {
 
-		adtsbuffer := []byte{}
 		aacparser.FillADTSHeader(self.adtsheader, self.audioCodecData.Config, 1024, len(packet.Data))
-		adtsbuffer = append(adtsbuffer, self.adtsheader...)
-		adtsbuffer = append(adtsbuffer, packet.Data...)
-
-		self.audiosrc.Push(adtsbuffer)
+		self.audioWriteBuffer.Write(self.adtsheader)
+		self.audioWriteBuffer.Write(packet.Data)
+		self.audiosrc.Push(self.audioWriteBuffer.Bytes())
+		self.audioWriteBuffer.Reset()
 	}
 
 	return nil
