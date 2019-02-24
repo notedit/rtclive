@@ -223,8 +223,6 @@ func (r *MediaRouter) CreateSubscriber(sdpStr string) (*Subscriber, string) {
 
 	outgoing := transport.CreateOutgoingStreamWithID(subId, audio, video)
 
-	outgoing.AttachTo(r.publisher.incoming)
-
 	if audio {
 		outgoing.GetAudioTracks()[0].AttachTo(r.publisher.audiotrack)
 	}
@@ -254,8 +252,8 @@ func (r *MediaRouter) StopSubscriber(subscriberId string) {
 	if subscriber == nil {
 		return
 	}
-	subscriber.outgoing.Stop()
-	subscriber.transport.Stop()
+
+	subscriber.Stop()
 
 	r.Lock()
 	delete(r.subscribers, subscriberId)

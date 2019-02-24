@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"runtime"
 	"strconv"
 	"strings"
 
@@ -24,11 +23,12 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/nareix/joy4/format"
 	"github.com/nareix/joy4/format/rtmp"
 )
 
 func init() {
-	runtime.GOMAXPROCS(1)
+	format.RegisterAll()
 }
 
 type Message struct {
@@ -190,17 +190,20 @@ func onmessage(s *melody.Session, msg []byte) {
 		s.Write(res)
 	case "play":
 		router := store.GetRouter(message.StreamID)
+
 		if router == nil {
 			if config.Cluster.Origins != nil {
 				var err error
 				router, err = pullStream(message.StreamID, config.Cluster.Origins)
 				if err != nil {
 					fmt.Println(err)
+					panic(err)
 				}
 			}
 		}
 
 		if router == nil {
+			panic("can not find router")
 			res, _ := json.Marshal(&Response{
 				Code: 1,
 			})
@@ -218,6 +221,7 @@ func onmessage(s *melody.Session, msg []byte) {
 				SubscriberID: subscriber.GetID(),
 			},
 		})
+		fmt.Println(res)
 		s.Write(res)
 	case "unplay":
 		router := store.GetRouter(message.StreamID)
@@ -355,7 +359,6 @@ func startRtmp() {
 	server := &rtmp.Server{}
 
 	server.HandlePlay = func(conn *rtmp.Conn) {
-
 		fmt.Println("RTCLive does not support rtmp play")
 	}
 
@@ -363,16 +366,18 @@ func startRtmp() {
 
 		//streamId := conn.URL.Path
 		streaminfo := strings.Split(conn.URL.Path, "/")
-		if len(streaminfo) != 2 {
+
+		fmt.Println(conn.URL.Path)
+		fmt.Println(streaminfo)
+
+		if len(streaminfo) <= 2 {
 			fmt.Println("rtmp url does not match, rtmp url should like rtmp://host:/appname/streamname")
 			return
 		}
 
-		streamName := streaminfo[1]
+		streamName := streaminfo[len(streaminfo)-1]
 
 		rtmpStreamer := rtmpstreamer.NewRtmpStreamer(streamName, config.AudioCapability, config.VideoCapability)
-
-		avutil.CopyFile(rtmpStreamer, conn)
 
 		header := make(chan bool)
 		done := make(chan bool)
@@ -399,7 +404,6 @@ func startRtmp() {
 				done <- true
 				return
 			}
-
 		}()
 
 		for {
@@ -407,7 +411,6 @@ func startRtmp() {
 			case <-done:
 				break
 			case <-header:
-				// todo
 				capabilitys := map[string]*sdp.Capability{
 					"video": config.VideoCapability,
 					"audio": config.AudioCapability,
@@ -425,6 +428,8 @@ func startRtmp() {
 		}
 
 	}
+
+	server.ListenAndServe()
 }
 
 func main() {
@@ -458,6 +463,8 @@ func main() {
 	m.HandleDisconnect(ondisconnect)
 
 	m.HandleMessage(onmessage)
+
+	go startRtmp()
 
 	r.Run(config.Server.Host + ":" + strconv.Itoa(config.Server.Port))
 }

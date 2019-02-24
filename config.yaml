@@ -24,7 +24,7 @@ capability:
       - http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
   video:
     codecs:
-      - vp8
+      - h264
     rtx: true
     rtcpfbc:
       - id: transport-cc
