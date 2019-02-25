@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/notedit/RTCLive/router"
-	melody "gopkg.in/olahol/melody.v1"
+	"github.com/olahol/melody"
 )
 
 type Routers struct {

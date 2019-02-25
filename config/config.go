@@ -14,6 +14,10 @@ type Config struct {
 		Host string `yaml:"host"`
 	} `yaml:"server"`
 
+	Rtmp struct {
+		Port int `yaml:"port"`
+	} `yaml:"rtmp"`
+
 	Media struct {
 		Endpoint string `yaml:"endpoint"`
 	} `yaml:"media"`

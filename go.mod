@@ -10,9 +10,12 @@ require (
 	github.com/hashicorp/go-multierror v1.0.0 // indirect
 	github.com/imroc/req v0.2.3
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
+	github.com/notedit/go-sdp v0.0.0-20181103104252-cc0b89e031ad
+	github.com/notedit/go-sdp-transform v0.0.0-20181119121630-e59ee064108d // indirect
 	github.com/notedit/gstreamer-go v0.2.0
 	github.com/notedit/media-server-go v0.1.5
 	github.com/notedit/rtmp-lib v0.0.1
+	github.com/olahol/melody v0.0.0-20180227134253-7bd65910e5ab
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/sirupsen/logrus v1.3.0 // indirect
 	gopkg.in/olahol/melody.v1 v1.0.0-20170518105555-d52139073376
