@@ -7,15 +7,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nareix/joy4/av"
-	"github.com/nareix/joy4/av/avutil"
-
 	melody "gopkg.in/olahol/melody.v1"
 
 	cconfig "github.com/notedit/RTCLive/config"
 	mrouter "github.com/notedit/RTCLive/router"
 	"github.com/notedit/RTCLive/rtmpstreamer"
 	"github.com/notedit/RTCLive/store"
+	rtmp "github.com/notedit/rtmp-lib"
+	"github.com/notedit/rtmp-lib/av"
 
 	"github.com/imroc/req"
 	mediaserver "github.com/notedit/media-server-go"
@@ -23,13 +22,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/nareix/joy4/format"
-	"github.com/nareix/joy4/format/rtmp"
 )
-
-func init() {
-	format.RegisterAll()
-}
 
 type Message struct {
 	Cmd          string `json:"cmd"`
@@ -358,20 +351,13 @@ func startRtmp() {
 
 	server := &rtmp.Server{}
 
-	server.HandlePlay = func(conn *rtmp.Conn) {
-		fmt.Println("RTCLive does not support rtmp play")
-	}
-
 	server.HandlePublish = func(conn *rtmp.Conn) {
 
-		//streamId := conn.URL.Path
 		streaminfo := strings.Split(conn.URL.Path, "/")
-
-		fmt.Println(conn.URL.Path)
-		fmt.Println(streaminfo)
 
 		if len(streaminfo) <= 2 {
 			fmt.Println("rtmp url does not match, rtmp url should like rtmp://host:/appname/streamname")
+			conn.Close()
 			return
 		}
 
@@ -379,53 +365,42 @@ func startRtmp() {
 
 		rtmpStreamer := rtmpstreamer.NewRtmpStreamer(streamName, config.AudioCapability, config.VideoCapability)
 
-		header := make(chan bool)
-		done := make(chan bool)
-
 		var router *mrouter.MediaRouter
 
-		go func() {
-			var streams []av.CodecData
-			var err error
-			if streams, err = conn.Streams(); err != nil {
-				fmt.Println(err)
-				done <- true
-				return
-			}
+		var streams []av.CodecData
+		var err error
 
-			if err = rtmpStreamer.WriteHeader(streams); err != nil {
-				done <- true
-				return
-			} else {
-				header <- true
-			}
-			if err = avutil.CopyPackets(rtmpStreamer, conn); err != nil {
-				fmt.Println(err)
-				done <- true
-				return
-			}
-		}()
+		if streams, err = conn.Streams(); err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		if err = rtmpStreamer.WriteHeader(streams); err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		capabilitys := map[string]*sdp.Capability{
+			"video": config.VideoCapability,
+			"audio": config.AudioCapability,
+		}
+
+		router = mrouter.NewMediaRouter(streamName, endpoint, capabilitys, true)
+		publisher := mrouter.NewPublisherWithID(streamName, rtmpStreamer.GetVideoTrack(), rtmpStreamer.GetAuidoTrack())
+		router.SetPublisher(publisher)
+		store.AddRouter(router)
 
 		for {
-			select {
-			case <-done:
+			packet, err := conn.ReadPacket()
+			if err != nil {
+				fmt.Println(err)
 				break
-			case <-header:
-				capabilitys := map[string]*sdp.Capability{
-					"video": config.VideoCapability,
-					"audio": config.AudioCapability,
-				}
-				router = mrouter.NewMediaRouter(streamName, endpoint, capabilitys, true)
-				publisher := mrouter.NewPublisherWithID(streamName, rtmpStreamer.GetVideoTrack(), rtmpStreamer.GetAuidoTrack())
-				router.SetPublisher(publisher)
-				store.AddRouter(router)
 			}
+			rtmpStreamer.WritePacket(packet)
 		}
 
-		if router != nil {
-			store.RemoveRouter(router)
-			router.Stop()
-		}
+		store.RemoveRouter(router)
+		router.Stop()
 
 	}
 

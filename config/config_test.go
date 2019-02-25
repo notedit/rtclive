@@ -1,16 +1,17 @@
-package main
+package config
 
 import (
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"testing"
-	)
+
+	"gopkg.in/yaml.v2"
+)
 
 func TestConfig(t *testing.T) {
 
-	yamlFile,_ := ioutil.ReadFile("./config.yaml")
+	yamlFile, _ := ioutil.ReadFile("./config.yaml")
 
-	var config ConfigStruct
+	var config Config
 	err := yaml.Unmarshal(yamlFile, &config)
 
 	if err != nil {
@@ -25,7 +26,7 @@ func TestConfig(t *testing.T) {
 		t.Error("parse flow error")
 	}
 
-	if !config.Capability.Video.Rtx  {
+	if !config.Capability.Video.Rtx {
 		t.Error("parse bool error")
 	}
 

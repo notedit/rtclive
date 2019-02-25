@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/nareix/joy4/av"
-	"github.com/nareix/joy4/codec/aacparser"
-	"github.com/nareix/joy4/codec/h264parser"
+	"github.com/notedit/rtmp-lib/aac"
+	"github.com/notedit/rtmp-lib/av"
+	"github.com/notedit/rtmp-lib/h264"
+
 	gstreamer "github.com/notedit/gstreamer-go"
 	mediaserver "github.com/notedit/media-server-go"
 	"github.com/notedit/media-server-go/sdp"
@@ -18,8 +19,8 @@ var video2rtp = "appsrc do-timestamp=true is-live=true name=appsrc ! h264parse !
 type RtmpStreamer struct {
 	id             string
 	streams        []av.CodecData
-	videoCodecData h264parser.CodecData
-	audioCodecData aacparser.CodecData
+	videoCodecData h264.CodecData
+	audioCodecData aac.CodecData
 	audioPipeline  *gstreamer.Pipeline
 	videoPipeline  *gstreamer.Pipeline
 	audiosink      *gstreamer.Element
@@ -60,7 +61,7 @@ func (self *RtmpStreamer) WriteHeader(streams []av.CodecData) error {
 
 	for _, stream := range streams {
 		if stream.Type() == av.H264 {
-			h264Codec := stream.(h264parser.CodecData)
+			h264Codec := stream.(h264.CodecData)
 			self.videoCodecData = h264Codec
 
 			videoMediaInfo := sdp.MediaInfoCreate("video", self.videoCapability)
@@ -81,14 +82,13 @@ func (self *RtmpStreamer) WriteHeader(streams []av.CodecData) error {
 
 			go func() {
 				for rtp := range self.videoout {
-					fmt.Println("video===", len(rtp))
 					self.videoSession.Push(rtp)
 				}
 			}()
 
 		}
 		if stream.Type() == av.AAC {
-			aacCodec := stream.(aacparser.CodecData)
+			aacCodec := stream.(aac.CodecData)
 			self.audioCodecData = aacCodec
 
 			audioMediaInfo := sdp.MediaInfoCreate("audio", self.audioCapability)
@@ -145,7 +145,7 @@ func (self *RtmpStreamer) WritePacket(packet av.Packet) error {
 			self.spspps = true
 		}
 
-		pktnalus, _ := h264parser.SplitNALUs(packet.Data)
+		pktnalus, _ := h264.SplitNALUs(packet.Data)
 		for _, nalu := range pktnalus {
 			self.videoWriteBuffer.Write([]byte{0, 0, 0, 1})
 			self.videoWriteBuffer.Write(nalu)
@@ -156,7 +156,7 @@ func (self *RtmpStreamer) WritePacket(packet av.Packet) error {
 
 	if stream.Type() == av.AAC {
 
-		aacparser.FillADTSHeader(self.adtsheader, self.audioCodecData.Config, 1024, len(packet.Data))
+		aac.FillADTSHeader(self.adtsheader, self.audioCodecData.Config, 1024, len(packet.Data))
 		self.audioWriteBuffer.Write(self.adtsheader)
 		self.audioWriteBuffer.Write(packet.Data)
 		self.audiosrc.Push(self.audioWriteBuffer.Bytes())
