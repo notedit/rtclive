@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
 	melody "gopkg.in/olahol/melody.v1"
 
+	"github.com/akamensky/argparse"
 	cconfig "github.com/notedit/RTCLive/config"
 	mrouter "github.com/notedit/RTCLive/router"
 	"github.com/notedit/RTCLive/rtmpstreamer"
@@ -410,7 +412,18 @@ func startRtmp() {
 func main() {
 
 	var err error
-	config, err = cconfig.LoadConfig("./config.yaml")
+
+	parser := argparse.NewParser("RTCLive", "RTCLive: WebRTC/RTMP based live streaming server")
+	configfile := parser.String("c", "config", &argparse.Options{Required: true, Help: "configpath is required"})
+
+	err = parser.Parse(os.Args)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	config, err = cconfig.LoadConfig(*configfile)
 
 	if err != nil {
 		panic(err)

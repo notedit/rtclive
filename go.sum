@@ -1,5 +1,7 @@
 github.com/Jeffail/gabs v1.1.1 h1:V0uzR08Hj22EX8+8QMhyI9sX2hwRu+/RJhJUmnwda/E=
 github.com/Jeffail/gabs v1.1.1/go.mod h1:6xMvQMK4k33lb7GUUpaAPh6nKMmemQeg5d4gn7/bOXc=
+github.com/akamensky/argparse v0.0.0-20190115094700-b33e05fb8d69 h1:5LcXlQGiPH1JNsR4IcKpBGNSY/QQdhHUercX+pHP2rU=
+github.com/akamensky/argparse v0.0.0-20190115094700-b33e05fb8d69/go.mod h1:pdh+2piXurh466J9tqIqq39/9GO2Y8nZt6Cxzu18T9A=
 github.com/chuckpreslar/emission v0.0.0-20170206194824-a7ddd980baf9/go.mod h1:2wSM9zJkl1UQEFZgSd68NfCgRz1VL1jzy/RjCg+ULrs=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/gin-contrib/cors v0.0.0-20190101123304-5e7acb10687f h1:iYwRrkSI4/6UeKFeqshIoreaNjzj6pm08J0cc1M/ZZc=
@@ -52,14 +54,8 @@ github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/ugorji/go/codec v0.0.0-20181209151446-772ced7fd4c2 h1:EICbibRW4JNKMcY+LsWmuwob+CRS1BmdRdjphAm9mH4=
 github.com/ugorji/go/codec v0.0.0-20181209151446-772ced7fd4c2/go.mod h1:VFNgLljTbGfSG7qAOspJ7OScBnGdDN/yBr0sguwnwf0=
-github.com/yutopp/go-amf0 v0.0.0-20180803120851-48851794bb1f h1:VIlyzrDymNB/eD+uJ2vdhgxsY1OGKpVSvVPV3oy97cI=
-github.com/yutopp/go-amf0 v0.0.0-20180803120851-48851794bb1f/go.mod h1:miopb3mUO8ynCPmYD04SZ0JCMFsBt0eOdAuQ6HHHQ6Q=
-github.com/yutopp/go-flv v0.2.0 h1:f/8z2SKymXJH78666m7Irpq+I1PsrGptBIR3RXGEw/A=
-github.com/yutopp/go-flv v0.2.0/go.mod h1:xe1MPrWcfQfYeBT7E5WAF0zvKUyf1hmSpesDjBoUV4E=
-github.com/yutopp/go-rtmp v0.0.0-20190128071726-cb2d763d2aac h1:P53JPXIO53qarv9aXK9sJuuwXZXazfgZpcWRfc0NrtM=
-github.com/yutopp/go-rtmp v0.0.0-20190128071726-cb2d763d2aac/go.mod h1:2KWXALjI9KDn85Mxf1sI5rwHQ8YTqeZTWOrFO8qNTFU=
-github.com/yutopp/go-rtmp v0.0.0-20190215174111-679b17dc8194 h1:IZXbY62+O8hlwWrE2K8i7K1x2Ae7+GTkMlRHWep2PfI=
-github.com/yutopp/go-rtmp v0.0.0-20190215174111-679b17dc8194/go.mod h1:2KWXALjI9KDn85Mxf1sI5rwHQ8YTqeZTWOrFO8qNTFU=
+github.com/urfave/cli v1.20.0 h1:fDqGv3UG/4jbVl/QkFwEdddtEDjh/5Ov6X+0B/3bPaw=
+github.com/urfave/cli v1.20.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijbERA=
 golang.org/x/crypto v0.0.0-20180904163835-0709b304e793 h1:u+LnwYTOOW7Ukr/fppxEb1Nwz0AtPflrblfvUudpo+I=
 golang.org/x/crypto v0.0.0-20180904163835-0709b304e793/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
 golang.org/x/net v0.0.0-20181220203305-927f97764cc3/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
