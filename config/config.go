@@ -38,8 +38,7 @@ type Config struct {
 		} `yaml:"video"`
 	}
 
-	AudioCapability *sdp.Capability
-	VideoCapability *sdp.Capability
+	Capabilities map[string]*sdp.Capability
 }
 
 func LoadConfig(filePath string) (*Config, error) {
@@ -59,12 +58,14 @@ func LoadConfig(filePath string) (*Config, error) {
 		return nil, errors.New("capability can not be empty")
 	}
 
+	config.Capabilities = make(map[string]*sdp.Capability)
+
 	if config.Capability.Audio.Codecs != nil {
 		audioCapability := &sdp.Capability{
 			Codecs:     config.Capability.Audio.Codecs,
 			Extensions: config.Capability.Audio.Extensions,
 		}
-		config.AudioCapability = audioCapability
+		config.Capabilities["audio"] = audioCapability
 	}
 
 	if config.Capability.Video.Codecs != nil {
@@ -81,7 +82,7 @@ func LoadConfig(filePath string) (*Config, error) {
 			Extensions: config.Capability.Video.Extensions,
 			Rtcpfbs:    rtcpfbs,
 		}
-		config.VideoCapability = videoCapability
+		config.Capabilities["video"] = videoCapability
 	}
 
 	return &config, nil

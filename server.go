@@ -150,10 +150,7 @@ func onmessage(s *melody.Session, msg []byte) {
 
 	switch message.Cmd {
 	case "publish":
-		capabilitys := map[string]*sdp.Capability{
-			"video": config.VideoCapability,
-			"audio": config.AudioCapability,
-		}
+		capabilitys := config.Capabilities
 		router := mrouter.NewMediaRouter(message.StreamID, endpoint, capabilitys, true)
 		_, answer := router.CreatePublisher(message.Sdp)
 		store.AddRouter(router)
@@ -243,7 +240,7 @@ func onmessage(s *melody.Session, msg []byte) {
 
 func pullStream(streamID string, origins []string) (*mrouter.MediaRouter, error) {
 
-	offer := endpoint.CreateOffer(config.VideoCapability, config.AudioCapability)
+	offer := endpoint.CreateOffer(config.Capabilities["video"], config.Capabilities["audio"])
 
 	for _, origin := range origins {
 		var requestUrl string
@@ -308,10 +305,7 @@ func pullStream(streamID string, origins []string) (*mrouter.MediaRouter, error)
 
 		incoming := transport.CreateIncomingStream(streamInfo)
 
-		capabilitys := map[string]*sdp.Capability{
-			"video": config.VideoCapability,
-			"audio": config.AudioCapability,
-		}
+		capabilitys := config.Capabilities
 
 		router := mrouter.NewMediaRouter(streamID, endpoint, capabilitys, false)
 
@@ -365,7 +359,7 @@ func startRtmp() {
 
 		streamName := streaminfo[len(streaminfo)-1]
 
-		rtmpStreamer := rtmpstreamer.NewRtmpStreamer(streamName, config.AudioCapability, config.VideoCapability)
+		rtmpStreamer := rtmpstreamer.NewRtmpStreamer(streamName, config.Capabilities["audio"], config.Capabilities["video"])
 
 		var router *mrouter.MediaRouter
 
@@ -382,10 +376,7 @@ func startRtmp() {
 			return
 		}
 
-		capabilitys := map[string]*sdp.Capability{
-			"video": config.VideoCapability,
-			"audio": config.AudioCapability,
-		}
+		capabilitys := config.Capabilities
 
 		router = mrouter.NewMediaRouter(streamName, endpoint, capabilitys, true)
 		publisher := mrouter.NewPublisherWithID(streamName, rtmpStreamer.GetVideoTrack(), rtmpStreamer.GetAuidoTrack())
