@@ -12,8 +12,8 @@ import (
 	"github.com/imroc/req"
 	"github.com/notedit/RTCLive/config"
 	"github.com/notedit/RTCLive/router"
-	"github.com/notedit/RTCLive/rtmpstreamer"
 	"github.com/notedit/RTCLive/store"
+	"github.com/notedit/RTCLive/streamer"
 	mediaserver "github.com/notedit/media-server-go"
 	"github.com/notedit/media-server-go/sdp"
 	rtmp "github.com/notedit/rtmp-lib"
@@ -385,7 +385,7 @@ func (self *Server) startRtmp() {
 
 		streamName := streaminfo[len(streaminfo)-1]
 
-		rtmpStreamer := rtmpstreamer.NewRtmpStreamer(streamName, self.cfg.Capabilities["audio"], self.cfg.Capabilities["video"])
+		rtmpStreamer := streamer.NewRtmpStreamer(streamName, self.cfg.Capabilities["audio"], self.cfg.Capabilities["video"])
 
 		var mediaRouter *router.MediaRouter
 		var streams []av.CodecData

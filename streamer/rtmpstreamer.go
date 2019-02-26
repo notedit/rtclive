@@ -1,4 +1,4 @@
-package rtmpstreamer
+package streamer
 
 import (
 	"bytes"
@@ -111,7 +111,6 @@ func (self *RtmpStreamer) WriteHeader(streams []av.CodecData) error {
 
 			go func() {
 				for rtp := range self.audioout {
-					fmt.Println("audio===", len(rtp))
 					self.audioSession.Push(rtp)
 				}
 			}()
@@ -169,20 +168,6 @@ func (self *RtmpStreamer) WritePacket(packet av.Packet) error {
 // WriteTrailer
 func (self *RtmpStreamer) WriteTrailer() error {
 	return nil
-}
-
-func (self *RtmpStreamer) HasVideo() bool {
-	if self.videoPipeline != nil {
-		return true
-	}
-	return false
-}
-
-func (self *RtmpStreamer) HasAudio() bool {
-	if self.videoPipeline != nil {
-		return true
-	}
-	return false
 }
 
 func (self *RtmpStreamer) GetVideoTrack() *mediaserver.IncomingStreamTrack {
