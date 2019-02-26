@@ -14,19 +14,22 @@ A Golang WebRTC/RTMP Broadcast Server
 - Client SDK 
 
 
-
 # Todo
 
-
-tbd 
+- [ ] WebRTC To RTMP
+- [ ] HTTP-FLV Push
+- [ ] Event Callback
+- [ ] Better Cluster Support
 
 
 # Usage
 
 
-## Run
-```
 
+
+## Run
+
+```
 git clone https://github.com/notedit/RTCLive.git
 
 go run server.go  -c config.yaml
@@ -55,10 +58,6 @@ need change the startPlay's streamId
 
 
 
-# Cluster
-
-
-tbd
 
 
 
