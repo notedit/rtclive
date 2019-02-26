@@ -2,7 +2,6 @@
 A Golang WebRTC/RTMP Broadcast Server
 
 
-
 # Features
 
 - WebRTC Push
@@ -20,6 +19,7 @@ A Golang WebRTC/RTMP Broadcast Server
 - [ ] HTTP-FLV Push
 - [ ] Event Callback
 - [ ] Better Cluster Support
+- [ ] Gop Cache
 
 
 # Usage
