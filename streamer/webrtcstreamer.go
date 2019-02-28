@@ -54,4 +54,9 @@ func (self *WebRTCStreamer) PushAudioFrame(data []byte, timestamp uint) {
 
 func (self *WebRTCStreamer) PushVideoFrame(data []byte, timestamp uint) {
 	// todo
+
+	if self.pipeline == nil {
+		self.setupPipeline()
+	}
+
 }

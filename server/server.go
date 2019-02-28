@@ -132,7 +132,7 @@ func (self *Server) onmessage(s *melody.Session, msg []byte) {
 	case "publish":
 		capabilitys := self.cfg.Capabilities
 		router := router.NewMediaRouter(message.StreamID, self.endpoint, capabilitys, true)
-		_, answer := router.CreatePublisher(message.Sdp)
+		publisher, answer := router.CreatePublisher(message.Sdp)
 		store.AddRouter(router)
 		sessionInfo := store.GetSession(s)
 		sessionInfo.StreamID = message.StreamID
@@ -143,6 +143,17 @@ func (self *Server) onmessage(s *melody.Session, msg []byte) {
 			},
 		})
 		s.Write(res)
+
+		// test webrtc streamer
+		rtcstreamer := streamer.NewWebRTCStreamer("rtmp://localhost/live/live", publisher.GetAudioTrack(), publisher.GetVideoTrack())
+
+		audioTrack := publisher.GetAudioTrack()
+
+		audioTrack.OnMediaFrame(func(frame []byte, timestamp uint) {
+			fmt.Println("got audio frame")
+			rtcstreamer.PushAudioFrame(frame, timestamp)
+		})
+
 	case "unpublish":
 		router := store.GetRouter(message.StreamID)
 		if router == nil {
