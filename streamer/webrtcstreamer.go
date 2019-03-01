@@ -7,7 +7,9 @@ import (
 
 // flvmux  streamable=true
 
-const rtp2rtmp = "appsrc is-live=true do-timestamp=true name=audiosrc ! decodebin ! audioconvert ! audioresample ! audio/x-raw,rate=441000 ! faac ! mux.  videotestsrc num-buffers=500 ! video/x-raw,framerate=25/1 ! x264enc ! mux.  flvmux name=mux ! filesink location=test.flv"
+//const rtp2rtmp = "appsrc is-live=true do-timestamp=true name=audiosrc ! opusdec ! audioconvert ! faac ! mux.  videotestsrc num-buffers=500 do-timestamp=true ! video/x-raw,framerate=25/1 ! x264enc ! mux.  flvmux name=mux ! filesink location=test.flv"
+
+const rtp2rtmp = "appsrc is-live=true do-timestamp=true name=audiosrc ! opusdec ! audioconvert ! autoaudiosink"
 
 type WebRTCStreamer struct {
 	rtmpUrl string

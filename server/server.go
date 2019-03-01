@@ -18,7 +18,7 @@ import (
 	"github.com/notedit/media-server-go/sdp"
 	rtmp "github.com/notedit/rtmp-lib"
 	"github.com/notedit/rtmp-lib/av"
-	"github.com/olahol/melody"
+	melody "gopkg.in/olahol/melody.v1"
 )
 
 type Message struct {
@@ -66,6 +66,8 @@ func New(cfg *config.Config) *Server {
 	httpServer.POST("/pull", server.pullStream)
 	httpServer.POST("/unpull", server.unpullStream)
 
+	server.httpServer = httpServer
+
 	server.melodyRouter.HandleConnect(server.onconnect)
 	server.melodyRouter.HandleDisconnect(server.ondisconnect)
 	server.melodyRouter.HandleMessage(server.onmessage)
@@ -82,6 +84,7 @@ func (self *Server) ListenAndServe() {
 	}
 
 	self.httpServer.Run(self.cfg.Server.Host + ":" + strconv.Itoa(self.cfg.Server.Port))
+
 }
 
 func (self *Server) onconnect(s *melody.Session) {
@@ -150,7 +153,7 @@ func (self *Server) onmessage(s *melody.Session, msg []byte) {
 		audioTrack := publisher.GetAudioTrack()
 
 		audioTrack.OnMediaFrame(func(frame []byte, timestamp uint) {
-			fmt.Println("got audio frame")
+			fmt.Println("got audio frame, ", len(frame))
 			rtcstreamer.PushAudioFrame(frame, timestamp)
 		})
 
