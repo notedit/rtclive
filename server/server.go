@@ -66,6 +66,8 @@ func New(cfg *config.Config) *Server {
 	httpServer.POST("/pull", server.pullStream)
 	httpServer.POST("/unpull", server.unpullStream)
 
+	server.httpServer = httpServer
+
 	server.melodyRouter.HandleConnect(server.onconnect)
 	server.melodyRouter.HandleDisconnect(server.ondisconnect)
 	server.melodyRouter.HandleMessage(server.onmessage)
