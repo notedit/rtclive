@@ -8,11 +8,9 @@ import (
 	opus "gopkg.in/hraban/opus.v2"
 )
 
-// flvmux  streamable=true
-
 //const rtp2rtmp = "appsrc is-live=true do-timestamp=true name=audiosrc ! opusparse ! opusdec ! audioconvert ! faac ! mux.  videotestsrc num-buffers=10000 do-timestamp=true ! video/x-raw,framerate=25/1 ! x264enc ! mux.  flvmux name=mux ! filesink location=test.flv"
 
-const rtp2rtmp = "appsrc is-live=true do-timestamp=true name=audiosrc ! opusparse ! oggmux ! filesink location=test.ogg"
+const rtp2rtmp = "appsrc is-live=true do-timestamp=true name=audiosrc ! opusparse ! mux. appsrc is-live=true do-timestamp=true name=videosrc ! h264parse ! mux.  matroskamux name=mux ! filesink location=test.mkv"
 
 type WebRTCStreamer struct {
 	rtmpUrl string
@@ -53,6 +51,8 @@ func (self *WebRTCStreamer) setupPipeline() {
 
 	self.pipeline = pipeline
 	self.audiosrc = pipeline.FindElement("audiosrc")
+	self.videosrc = pipeline.FindElement("videosrc")
+
 	self.pipeline.Start()
 
 }
@@ -94,10 +94,10 @@ func (self *WebRTCStreamer) PushAudioFrame(data []byte, timestamp uint) {
 }
 
 func (self *WebRTCStreamer) PushVideoFrame(data []byte, timestamp uint) {
-	// todo
 
 	if self.pipeline == nil {
 		self.setupPipeline()
 	}
 
+	self.videosrc.Push(data)
 }

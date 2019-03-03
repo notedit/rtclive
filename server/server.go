@@ -152,9 +152,16 @@ func (self *Server) onmessage(s *melody.Session, msg []byte) {
 
 		audioTrack := publisher.GetAudioTrack()
 
+		videoTrack := publisher.GetVideoTrack()
+
 		audioTrack.OnMediaFrame(func(frame []byte, timestamp uint) {
 			fmt.Println("got audio frame, ", len(frame))
 			rtcstreamer.PushAudioFrame(frame, timestamp)
+		})
+
+		videoTrack.OnMediaFrame(func(frame []byte, timestamp uint) {
+			fmt.Println("got video frame, ", len(frame))
+			rtcstreamer.PushVideoFrame(frame, timestamp)
 		})
 
 	case "unpublish":
