@@ -1,5 +1,5 @@
 # RTClive
-A Golang WebRTC/RTMP Broadcast Server
+A Golang WebRTC/RTMP Low Latency Broadcast Server
 
 
 # Features
@@ -12,14 +12,6 @@ A Golang WebRTC/RTMP Broadcast Server
 - Cluster Support 
 - Client SDK 
 
-
-# Todo
-
-- [ ] WebRTC To RTMP
-- [ ] HTTP-FLV Push
-- [ ] Event Callback
-- [ ] Better Cluster Support
-- [ ] Gop Cache
 
 
 # Usage
