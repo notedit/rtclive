@@ -12,7 +12,6 @@ import (
 	"github.com/imroc/req"
 	"github.com/notedit/RTCLive/config"
 	"github.com/notedit/RTCLive/router"
-	"github.com/notedit/RTCLive/rtmpstreamer"
 	"github.com/notedit/RTCLive/store"
 	mediaserver "github.com/notedit/media-server-go"
 	"github.com/notedit/media-server-go/sdp"
@@ -134,14 +133,14 @@ func (self *Server) onmessage(s *melody.Session, msg []byte) {
 	case "publish":
 		capabilitys := self.cfg.Capabilities
 		router := router.NewMediaRouter(message.StreamID, self.endpoint, capabilitys, true)
-		_, answer := router.CreatePublisher(message.Sdp)
+		publisher := router.CreateRTCPublisher(message.Sdp)
 		store.AddRouter(router)
 		sessionInfo := store.GetSession(s)
 		sessionInfo.StreamID = message.StreamID
 		res, _ := json.Marshal(&Response{
 			Code: 0,
 			Data: ResponseData{
-				Sdp: answer,
+				Sdp: publisher.GetAnswer(),
 			},
 		})
 		s.Write(res)
@@ -346,22 +345,11 @@ func (self *Server) pullStreamFromOrigin(streamID string, origins []string) (*ro
 			panic("can not get stream info")
 		}
 
-		transport := self.endpoint.CreateTransport(answer, offer, true)
-
-		transport.SetLocalProperties(offer.GetAudioMedia(), offer.GetVideoMedia())
-		transport.SetRemoteProperties(answer.GetAudioMedia(), answer.GetVideoMedia())
-
-		streamInfo := answer.GetFirstStream()
-
-		incoming := transport.CreateIncomingStream(streamInfo)
-
 		capabilitys := self.cfg.Capabilities
 
 		mediaRouter := router.NewMediaRouter(streamID, self.endpoint, capabilitys, false)
 
-		publisher := router.NewPublisher(incoming, transport)
-
-		mediaRouter.SetPublisher(publisher)
+		mediaRouter.CreateRelayPublisher(offer.String(), answer.String())
 
 		mediaRouter.SetOriginUrl(origin)
 
@@ -387,9 +375,13 @@ func (self *Server) startRtmp() {
 
 		streamName := streaminfo[len(streaminfo)-1]
 
-		rtmpStreamer := rtmpstreamer.NewRtmpStreamer(streamName, self.cfg.Capabilities["audio"], self.cfg.Capabilities["video"])
+		capabilitys := self.cfg.Capabilities
 
-		var mediaRouter *router.MediaRouter
+		mediaRouter := router.NewMediaRouter(streamName, self.endpoint, capabilitys, true)
+
+		publisher := mediaRouter.CreateRTMPPublisher(streamName)
+		store.AddRouter(mediaRouter)
+
 		var streams []av.CodecData
 		var err error
 
@@ -398,17 +390,10 @@ func (self *Server) startRtmp() {
 			return
 		}
 
-		if err = rtmpStreamer.WriteHeader(streams); err != nil {
+		if err = publisher.WriteHeader(streams); err != nil {
 			fmt.Println(err)
 			return
 		}
-
-		capabilitys := self.cfg.Capabilities
-
-		mediaRouter = router.NewMediaRouter(streamName, self.endpoint, capabilitys, true)
-		publisher := router.NewPublisherWithID(streamName, rtmpStreamer.GetVideoTrack(), rtmpStreamer.GetAuidoTrack())
-		mediaRouter.SetPublisher(publisher)
-		store.AddRouter(mediaRouter)
 
 		for {
 			packet, err := conn.ReadPacket()
@@ -416,7 +401,7 @@ func (self *Server) startRtmp() {
 				fmt.Println(err)
 				break
 			}
-			rtmpStreamer.WritePacket(packet)
+			publisher.WritePacket(packet)
 		}
 
 		store.RemoveRouter(mediaRouter)

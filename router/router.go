@@ -8,79 +8,15 @@ import (
 	"github.com/notedit/media-server-go/sdp"
 )
 
-type Publisher struct {
-	id         string
-	incoming   *mediaserver.IncomingStream
-	videotrack *mediaserver.IncomingStreamTrack
-	audiotrack *mediaserver.IncomingStreamTrack
-	transport  *mediaserver.Transport
+// Publisher interface
+type Publisher interface {
+	GetID() string
+	GetVideoTrack() *mediaserver.IncomingStreamTrack
+	GetAudioTrack() *mediaserver.IncomingStreamTrack
+	Stop()
 }
 
-func NewPublisher(incoming *mediaserver.IncomingStream, transport *mediaserver.Transport) *Publisher {
-
-	var videoTrack *mediaserver.IncomingStreamTrack
-	var audioTrack *mediaserver.IncomingStreamTrack
-
-	if len(incoming.GetVideoTracks()) > 0 {
-		videoTrack = incoming.GetVideoTracks()[0]
-	}
-
-	if len(incoming.GetAudioTracks()) > 0 {
-		audioTrack = incoming.GetAudioTracks()[0]
-	}
-
-	publisher := &Publisher{
-		id:         incoming.GetID(),
-		incoming:   incoming,
-		videotrack: videoTrack,
-		audiotrack: audioTrack,
-		transport:  transport,
-	}
-	return publisher
-}
-
-func NewPublisherWithID(ID string, videotrack *mediaserver.IncomingStreamTrack, audiotrack *mediaserver.IncomingStreamTrack) *Publisher {
-
-	publisher := &Publisher{
-		id:         ID,
-		videotrack: videotrack,
-		audiotrack: audiotrack,
-	}
-	return publisher
-}
-
-func (p *Publisher) GetID() string {
-	return p.id
-}
-
-func (p *Publisher) GetStream() *mediaserver.IncomingStream {
-	return p.incoming
-}
-
-func (p *Publisher) GetVideoTrack() *mediaserver.IncomingStreamTrack {
-	return p.videotrack
-}
-
-func (p *Publisher) GetAudioTrack() *mediaserver.IncomingStreamTrack {
-	return p.audiotrack
-}
-
-func (p *Publisher) GetTransport() *mediaserver.Transport {
-	return p.transport
-}
-
-func (p *Publisher) Stop() {
-
-	if p.incoming != nil {
-		p.incoming.Stop()
-	}
-
-	if p.transport != nil {
-		p.transport.Stop()
-	}
-
-}
-
+// Subscriber struct
 type Subscriber struct {
 	id          string
 	publisherId string
@@ -88,32 +24,38 @@ type Subscriber struct {
 	transport   *mediaserver.Transport
 }
 
+// GetID get subscriber id
 func (s *Subscriber) GetID() string {
 	return s.id
 }
 
+// GetPublisherID get publisher id
 func (s *Subscriber) GetPublisherID() string {
 	return s.publisherId
 }
 
+// GetStream  get outgoing stream
 func (s *Subscriber) GetStream() *mediaserver.OutgoingStream {
 	return s.outgoing
 }
 
+// GetTransport transport
 func (s *Subscriber) GetTransport() *mediaserver.Transport {
 	return s.transport
 }
 
+// Stop stop it
 func (s *Subscriber) Stop() {
 	s.outgoing.Stop()
 	s.transport.Stop()
 }
 
+// MediaRouter mediarouter
 type MediaRouter struct {
 	routerID     string
 	capabilities map[string]*sdp.Capability
 	endpoint     *mediaserver.Endpoint
-	publisher    *Publisher
+	publisher    Publisher
 	subscribers  map[string]*Subscriber
 	originUrl    string
 	origin       bool
@@ -139,11 +81,11 @@ func (r *MediaRouter) IsOrgin() bool {
 	return r.origin
 }
 
-func (r *MediaRouter) GetPublisher() *Publisher {
+func (r *MediaRouter) GetPublisher() Publisher {
 	return r.publisher
 }
 
-func (r *MediaRouter) SetPublisher(publisher *Publisher) {
+func (r *MediaRouter) SetPublisher(publisher Publisher) {
 	r.publisher = publisher
 }
 
@@ -159,45 +101,27 @@ func (s *MediaRouter) GetSubscribers() map[string]*Subscriber {
 	return s.subscribers
 }
 
-func (r *MediaRouter) CreatePublisher(sdpStr string) (*Publisher, string) {
-	offer, err := sdp.Parse(sdpStr)
-	if err != nil {
-		panic(err)
-	}
+func (r *MediaRouter) CreateRTCPublisher(sdpStr string) *RTCPublisher {
 
-	transport := r.endpoint.CreateTransport(offer, nil)
-	transport.SetRemoteProperties(offer.GetMedia("audio"), offer.GetMedia("video"))
+	publisher := NewRTCPublisher(sdpStr, r.endpoint, r.capabilities)
+	r.publisher = publisher
+	return publisher
+}
 
-	answer := offer.Answer(transport.GetLocalICEInfo(),
-		transport.GetLocalDTLSInfo(),
-		r.endpoint.GetLocalCandidates(),
-		r.capabilities)
+func (r *MediaRouter) CreateRelayPublisher(offerStr string, answerStr string) *RTCPublisher {
 
-	transport.SetLocalProperties(answer.GetMedia("audio"), answer.GetMedia("video"))
+	publisher := NewRelayPublisher(offerStr, answerStr, r.endpoint, r.capabilities)
+	r.publisher = publisher
+	return publisher
 
-	streamInfo := offer.GetFirstStream()
-	incoming := transport.CreateIncomingStream(streamInfo)
+}
 
-	var videoTrack *mediaserver.IncomingStreamTrack
-	var audioTrack *mediaserver.IncomingStreamTrack
+func (r *MediaRouter) CreateRTMPPublisher(streamId string) *RTMPPublisher {
 
-	if len(incoming.GetVideoTracks()) > 0 {
-		videoTrack = incoming.GetVideoTracks()[0]
-	}
+	publisher := NewRTMPPublisher(streamId, r.capabilities)
+	r.publisher = publisher
 
-	if len(incoming.GetAudioTracks()) > 0 {
-		audioTrack = incoming.GetAudioTracks()[0]
-	}
-
-	r.publisher = &Publisher{
-		id:         streamInfo.GetID(),
-		incoming:   incoming,
-		videotrack: videoTrack,
-		audiotrack: audioTrack,
-		transport:  transport,
-	}
-
-	return r.publisher, answer.String()
+	return publisher
 }
 
 func (r *MediaRouter) CreateSubscriber(sdpStr string) (*Subscriber, string) {
@@ -218,24 +142,23 @@ func (r *MediaRouter) CreateSubscriber(sdpStr string) (*Subscriber, string) {
 
 	subId := uuid.Must(uuid.NewV4()).String()
 
-	audio := r.publisher.audiotrack != nil
-	video := r.publisher.videotrack != nil
+	audio := r.publisher.GetAudioTrack() != nil
+	video := r.publisher.GetVideoTrack() != nil
 
 	outgoing := transport.CreateOutgoingStreamWithID(subId, audio, video)
 
 	if audio {
-		outgoing.GetAudioTracks()[0].AttachTo(r.publisher.audiotrack)
+		outgoing.GetAudioTracks()[0].AttachTo(r.publisher.GetAudioTrack())
 	}
 
 	if video {
-		outgoing.GetVideoTracks()[0].AttachTo(r.publisher.videotrack)
+		outgoing.GetVideoTracks()[0].AttachTo(r.publisher.GetVideoTrack())
 	}
 
 	subscriber := &Subscriber{
-		id:          subId,
-		publisherId: r.publisher.GetID(),
-		outgoing:    outgoing,
-		transport:   transport,
+		id:        subId,
+		outgoing:  outgoing,
+		transport: transport,
 	}
 
 	r.Lock()
