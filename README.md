@@ -22,7 +22,7 @@ A Golang WebRTC/RTMP Low Latency Broadcast Server
 ## Run
 
 ```
-git clone https://github.com/notedit/RTCLive.git
+git clone https://github.com/notedit/rtclive.git
 
 go run server.go  -c config.yaml
 
