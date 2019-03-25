@@ -44,6 +44,8 @@ github.com/notedit/gstreamer-go v0.2.0 h1:XSnozDlkkKTJPRPo45ho0Lb2BLsYbEw7k5vcWc
 github.com/notedit/gstreamer-go v0.2.0/go.mod h1:CGCLZR47aRzzEmup8uQcplfOdLqEtJjFihiu+A2aIZw=
 github.com/notedit/media-server-go v0.1.4 h1:zE6XW4o2wDIBqxYyd1+kAzI83mu5ATyoiccYjDtmdfE=
 github.com/notedit/media-server-go v0.1.4/go.mod h1:a2tVGyH6IegghSpIrj03Y+kjr5jrYCEctNEFIloGrQc=
+github.com/notedit/media-server-go v0.1.5 h1:qeZL6v8rMXi++xi9s1+sq1RcnGZlei1eX4RQZBdq7zY=
+github.com/notedit/media-server-go v0.1.5/go.mod h1:a2tVGyH6IegghSpIrj03Y+kjr5jrYCEctNEFIloGrQc=
 github.com/notedit/rtclive v0.0.0-20190324185842-e11a1abd1f5c h1:mHnVgZeep1R1u/BSAUH8mkigvE6O7SOWLkwoJeuUXR8=
 github.com/notedit/rtclive v0.0.0-20190324185842-e11a1abd1f5c/go.mod h1:L4hONpLj3oLddbK4DkF1l4IKC6QLhtxR+zAQPuNDjlw=
 github.com/notedit/rtmp-lib v0.0.0-20190225070819-94fa3383c631 h1:Kaf7wZOhDIsGTE7aNBJPMOmc3E1sQSspeWrhcdglk5Q=
