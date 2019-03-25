@@ -3,7 +3,7 @@ package store
 import (
 	"sync"
 
-	"github.com/notedit/RTCLive/router"
+	"github.com/notedit/rtclive/router"
 	"github.com/olahol/melody"
 )
 

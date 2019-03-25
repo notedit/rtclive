@@ -5,15 +5,15 @@ import (
 	"os"
 
 	"github.com/akamensky/argparse"
-	"github.com/notedit/RTCLive/config"
-	"github.com/notedit/RTCLive/server"
+	"github.com/notedit/rtclive/config"
+	"github.com/notedit/rtclive/server"
 )
 
 func main() {
 
 	var err error
 	var cfg *config.Config
-	parser := argparse.NewParser("RTCLive", "RTCLive: WebRTC/RTMP based live streaming server")
+	parser := argparse.NewParser("rtclive", "rtclive: WebRTC/RTMP based live streaming server")
 	configfile := parser.String("c", "config", &argparse.Options{Required: true, Help: "configpath is required"})
 
 	err = parser.Parse(os.Args)
