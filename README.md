@@ -36,6 +36,19 @@ go run server.go  -c config.yaml
 See [demo](https://github.com/notedit/RTCLive-js/blob/master/demo/pusher.html)
 
 
+```
+const videoElement = document.getElementById('video_container');
+
+const pusherConfig = new RTCPusherConfig();
+const pusher = new RTCPusher(pusherConfig);
+await pusher.setupLocalMedia();
+pusher.play(videoElement);
+
+const pushUrl =  'ws://127.0.0.1:5000/ws';
+await pusher.startPush('test_streamID', pushUrl);
+```
+
+
 ## RTMP Push
 
 ```
@@ -46,7 +59,18 @@ ffmpeg -re -i test.mp4  -vcodec copy -acodec copy -f flv rtmp://localhost/live/s
 
 See [demo](https://github.com/notedit/RTCLive-js/blob/master/demo/player.html)
 
-need change the startPlay's streamId 
+```
+
+const videoElement = document.getElementById('video_container');
+const playerConfig = new RTCPlayerConfig();
+const player = new RTCPlayer(playerConfig);
+
+const playUrl =  'ws://127.0.0.1:5000/ws';
+await player.startPlay('test_streamID',playUrl);
+
+player.play(videoElement);
+console.log('start to play')
+```
 
 
 
