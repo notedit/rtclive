@@ -29,7 +29,6 @@ go run server.go  -c config.yaml
 ```
 
 
-
 ## WebRTC Push
 
 
@@ -70,6 +69,22 @@ await player.startPlay('test_streamID',playUrl);
 
 player.play(videoElement);
 console.log('start to play')
+```
+
+
+## Cluster
+
+rtclive support server relay, when rtclive server can not find one stream, it will find stream from origin servers.
+
+you can config multi origin servers.
+
+
+```
+cluster:
+    origins:
+        - 127.0.0.1:5001
+        - 127.0.0.1:5003
+
 ```
 
 
