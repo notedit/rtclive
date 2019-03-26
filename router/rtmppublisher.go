@@ -178,6 +178,7 @@ func (p *RTMPPublisher) GetID() string {
 	return p.id
 }
 
+// GetVideoTrack get video track
 func (p *RTMPPublisher) GetVideoTrack() *mediaserver.IncomingStreamTrack {
 
 	if p.videoSession != nil {
@@ -186,6 +187,7 @@ func (p *RTMPPublisher) GetVideoTrack() *mediaserver.IncomingStreamTrack {
 	return nil
 }
 
+// GetAudioTrack get audio track
 func (p *RTMPPublisher) GetAudioTrack() *mediaserver.IncomingStreamTrack {
 
 	if p.audioSession != nil {
