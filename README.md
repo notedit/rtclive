@@ -13,7 +13,6 @@ A Golang WebRTC/RTMP Low Latency Broadcast Server
 - Client SDK 
 
 
-
 # Usage
 
 
@@ -22,10 +21,11 @@ A Golang WebRTC/RTMP Low Latency Broadcast Server
 ## Run
 
 
-You should install `media-server-go` first
+You should install `media-server-go-native`  and `media-server-go`  first
+
 
 [media-server-go](https://github.com/notedit/media-server-go#install)
-
+[media-media-go-native](https://github.com/notedit/media-server-go-native)
 
 ```
 git clone https://github.com/notedit/rtclive.git
