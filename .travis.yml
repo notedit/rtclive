@@ -1,0 +1,34 @@
+branches:
+  only:
+  - master
+
+sudo: true
+
+language: go
+
+go:
+  - "1.11" # use the latest Go release
+  
+
+matrix:
+  include:
+    - os: linux
+      dist: xenial
+    - os: osx
+      osx_image: xcode10.1
+
+
+before_install:
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update -qq; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y autoconf libtool automake g++-7; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 90; fi
+
+
+install:
+  - git clone --recurse-submodules https://github.com/notedit/media-server-go-native.git 
+  - cd  media-server-go-native && make && cd ../
+  - go get -t -d ./...
+
+script:
+  - go build -v
