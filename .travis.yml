@@ -27,11 +27,15 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 90; fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-good1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-ugly gstreamer1.0-libav; fi
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install pkg-config; fi
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install libffi; fi
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install gstreamer; fi
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install gst-plugins-base; fi
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install gst-plugins-good; fi
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install gst-plugins-bad; fi
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install gst-plugins-ugly; fi
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then export PKG_CONFIG_PATH="/usr/local/opt/libffi/lib/pkgconfig"; fi
+
+
 
 
 install:
