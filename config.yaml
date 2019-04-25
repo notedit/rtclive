@@ -38,8 +38,15 @@ relay:
     stream: stream4
   - mode: dynamic
     type: rtmp
-    edge: rtmp://localhost/live/
-    
+    edge: rtmp://localhost/live/{stream}
+  - mode: dynamic
+    type: rtsp
+    edge: rtsp://localhost/live/{stream}
+  - mode: dynamic 
+    type: webrtc
+    edge: http://127.0.0.1:8000/
+
+
     
 
 
