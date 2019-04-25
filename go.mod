@@ -16,4 +16,4 @@ require (
 	gopkg.in/yaml.v2 v2.2.2
 )
 
-replace github.com/notedit/media-server-go v0.1.6 => ../../media-server-go
+replace github.com/notedit/media-server-go v0.1.8 => ../../media-server-go
