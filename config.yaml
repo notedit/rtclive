@@ -3,15 +3,12 @@ server:
   host: 127.0.0.1
   port: 5000
 
-  
+
+
 # webrtc media server address, the endpoint should be a public server ip, if you use rtclive in production
 media:
   endpoint: 127.0.0.1
 
-
-# rtmp server listen port  
-rtmp:
-  port: 1935
 
 
 # rtclive support server relay, when rtclive server can not find one stream, it will find stream from origin servers.
@@ -20,6 +17,30 @@ rtmp:
 # cluster:
 #   origins:
 #     - 127.0.0.1:5001
+
+
+relay:
+  - mode: static
+    type: rtmp
+    edge: rtmp://localhost/live/teststream
+    stream: stream1
+  - mode: static
+    type: webrtc
+    edge: http://127.0.0.1:8000/
+    stream: stream2
+  - mode: static
+    type: file
+    edge: /home/test.mp4
+    stream: stream3
+  - mode: static
+    type: rtsp
+    edge: rtsp://localhost/live/stream
+    stream: stream4
+  - mode: dynamic
+    type: rtmp
+    edge: rtmp://localhost/live/
+    
+    
 
 
 # webrtc media capability
