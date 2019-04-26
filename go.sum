@@ -46,12 +46,15 @@ github.com/notedit/media-server-go v0.1.4 h1:zE6XW4o2wDIBqxYyd1+kAzI83mu5ATyoicc
 github.com/notedit/media-server-go v0.1.4/go.mod h1:a2tVGyH6IegghSpIrj03Y+kjr5jrYCEctNEFIloGrQc=
 github.com/notedit/media-server-go v0.1.5 h1:qeZL6v8rMXi++xi9s1+sq1RcnGZlei1eX4RQZBdq7zY=
 github.com/notedit/media-server-go v0.1.5/go.mod h1:a2tVGyH6IegghSpIrj03Y+kjr5jrYCEctNEFIloGrQc=
+github.com/notedit/media-server-go v0.1.8 h1:g/PwEuPQOX5bpDbJipmu6wPCR54pGM+xpnJ/HD2lGyE=
 github.com/notedit/rtclive v0.0.0-20190324185842-e11a1abd1f5c h1:mHnVgZeep1R1u/BSAUH8mkigvE6O7SOWLkwoJeuUXR8=
 github.com/notedit/rtclive v0.0.0-20190324185842-e11a1abd1f5c/go.mod h1:L4hONpLj3oLddbK4DkF1l4IKC6QLhtxR+zAQPuNDjlw=
 github.com/notedit/rtmp-lib v0.0.0-20190225070819-94fa3383c631 h1:Kaf7wZOhDIsGTE7aNBJPMOmc3E1sQSspeWrhcdglk5Q=
 github.com/notedit/rtmp-lib v0.0.0-20190225070819-94fa3383c631/go.mod h1:Ua4gNG+L57n+AkZfSrsV+VGoWDuOTd7eux+CBjGPeF0=
 github.com/notedit/rtmp-lib v0.0.1 h1:bezXVVCnyfefQYURECA//37cJ2RrAioIaiXC254iUT4=
 github.com/notedit/rtmp-lib v0.0.1/go.mod h1:Ua4gNG+L57n+AkZfSrsV+VGoWDuOTd7eux+CBjGPeF0=
+github.com/notedit/sdp v0.0.0-20190418080450-702b42591eb2 h1:OBlsQl9n5djQqLqwHO5gou1irbitUPwS+SfOrt3yHTU=
+github.com/notedit/sdp v0.0.0-20190418080450-702b42591eb2/go.mod h1:GbICVEB3gb4OfNreIqFKFqWASbpTgrB+Q6lErFpYeaY=
 github.com/olahol/melody v0.0.0-20180227134253-7bd65910e5ab h1:2fsluM+sAZRIQtvloPaokkWWjV8strYfmXsDCtZMqt0=
 github.com/olahol/melody v0.0.0-20180227134253-7bd65910e5ab/go.mod h1:3lo03f1jM3KFUG/rsujuLB1rBmlvIzVM3SCqbuHqsBU=
 github.com/pkg/errors v0.8.1 h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=

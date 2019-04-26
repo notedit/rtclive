@@ -4,19 +4,16 @@ import (
 	"errors"
 	"io/ioutil"
 
-	"github.com/notedit/media-server-go/sdp"
+	"github.com/notedit/sdp"
 	"gopkg.in/yaml.v2"
 )
 
+// Config lib 
 type Config struct {
 	Server struct {
 		Port int    `yaml:"port"`
 		Host string `yaml:"host"`
 	} `yaml:"server"`
-
-	Rtmp struct {
-		Port int `yaml:"port"`
-	} `yaml:"rtmp"`
 
 	Media struct {
 		Endpoint string `yaml:"endpoint"`
@@ -45,15 +42,11 @@ type Config struct {
 	Capabilities map[string]*sdp.Capability
 }
 
-func LoadConfig(filePath string) (*Config, error) {
-
-	data, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		return nil, err
-	}
+// LoadConfigBytes load config from data buffer
+func LoadConfigBytes(data []byte) (*Config, error) {
 
 	var config Config
-	err = yaml.Unmarshal(data, &config)
+	err := yaml.Unmarshal(data, &config)
 	if err != nil {
 		return nil, err
 	}
@@ -90,4 +83,17 @@ func LoadConfig(filePath string) (*Config, error) {
 	}
 
 	return &config, nil
+	
+}
+
+
+// LoadConfig from a file 
+func LoadConfig(filePath string) (*Config, error) {
+
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	return LoadConfigBytes(data)
 }

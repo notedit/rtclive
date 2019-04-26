@@ -58,7 +58,8 @@ func New(cfg *config.Config) *Server {
 	httpServer := gin.Default()
 	httpServer.Use(cors.Default())
 
-	httpServer.GET("/ws", func(c *gin.Context) {
+
+	httpServer.GET("/stream/:stream", func(c *gin.Context) {
 		server.melodyRouter.HandleRequest(c.Writer, c.Request)
 	})
 
@@ -78,9 +79,9 @@ func New(cfg *config.Config) *Server {
 
 func (self *Server) ListenAndServe() {
 
-	if self.cfg.Rtmp.Port > 0 {
-		go self.startRtmp()
-	}
+	// if self.cfg.Rtmp.Port > 0 {
+	// 	go self.startRtmp()
+	// }
 
 	self.httpServer.Run(self.cfg.Server.Host + ":" + strconv.Itoa(self.cfg.Server.Port))
 }

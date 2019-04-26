@@ -11,31 +11,19 @@ media:
 
 
 
-# rtclive support server relay, when rtclive server can not find one stream, it will find stream from origin servers.
-# you can config multi origin servers.
-# it is the origin's http server address
-# cluster:
-#   origins:
-#     - 127.0.0.1:5001
-
-
 relay:
   - mode: static
     type: rtmp
     edge: rtmp://localhost/live/teststream
     stream: stream1
   - mode: static
-    type: webrtc
-    edge: http://127.0.0.1:8000/
-    stream: stream2
-  - mode: static
-    type: file
-    edge: /home/test.mp4
-    stream: stream3
-  - mode: static
     type: rtsp
     edge: rtsp://localhost/live/stream
     stream: stream4
+  - mode: static
+    type: webrtc
+    edge: http://127.0.0.1:8000/
+    stream: stream2
   - mode: dynamic
     type: rtmp
     edge: rtmp://localhost/live/{stream}
