@@ -11,12 +11,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/imroc/req"
 	mediaserver "github.com/notedit/media-server-go"
-	"github.com/notedit/media-server-go/sdp"
 	"github.com/notedit/rtclive/config"
 	"github.com/notedit/rtclive/router"
 	"github.com/notedit/rtclive/store"
 	rtmp "github.com/notedit/rtmp-lib"
 	"github.com/notedit/rtmp-lib/av"
+	"github.com/notedit/sdp"
 	"github.com/olahol/melody"
 )
 

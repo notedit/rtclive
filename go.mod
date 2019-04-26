@@ -11,6 +11,7 @@ require (
 	github.com/notedit/gstreamer-go v0.2.0
 	github.com/notedit/media-server-go v0.1.6
 	github.com/notedit/rtmp-lib v0.0.1
+	github.com/notedit/sdp v0.0.1
 	github.com/olahol/melody v0.0.0-20180227134253-7bd65910e5ab
 	gopkg.in/olahol/melody.v1 v1.0.0-20170518105555-d52139073376
 	gopkg.in/yaml.v2 v2.2.2
