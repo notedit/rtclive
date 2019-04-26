@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/notedit/media-server-go/sdp"
+	"github.com/notedit/sdp"
 	"github.com/notedit/rtmp-lib/aac"
 	"github.com/notedit/rtmp-lib/av"
 	"github.com/notedit/rtmp-lib/h264"

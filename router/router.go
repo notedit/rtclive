@@ -5,7 +5,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	mediaserver "github.com/notedit/media-server-go"
-	"github.com/notedit/media-server-go/sdp"
+	"github.com/notedit/sdp"
 )
 
 // Publisher interface

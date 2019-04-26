@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/imroc/req"
 	mediaserver "github.com/notedit/media-server-go"
-	"github.com/notedit/media-server-go/sdp"
+	"github.com/notedit/sdp"
 	"github.com/notedit/rtclive/config"
 	"github.com/notedit/rtclive/router"
 	"github.com/notedit/rtclive/store"
@@ -59,9 +59,10 @@ func New(cfg *config.Config) *Server {
 	httpServer.Use(cors.Default())
 
 
-	httpServer.GET("/stream/:stream", func(c *gin.Context) {
+	httpServer.GET("/live/:stream", func(c *gin.Context) {
 		server.melodyRouter.HandleRequest(c.Writer, c.Request)
 	})
+
 
 	httpServer.POST("/pull", server.pullStream)
 	httpServer.POST("/unpull", server.unpullStream)

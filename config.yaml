@@ -22,7 +22,7 @@ relay:
     stream: stream4
   - mode: static
     type: webrtc
-    edge: http://127.0.0.1:8000/
+    edge: ws://127.0.0.1:8000/live/stream2
     stream: stream2
   - mode: dynamic
     type: rtmp
@@ -32,7 +32,7 @@ relay:
     edge: rtsp://localhost/live/{stream}
   - mode: dynamic 
     type: webrtc
-    edge: http://127.0.0.1:8000/
+    edge: ws://127.0.0.1:8000/live/{stream}
 
 
     

@@ -8,6 +8,14 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+
+type RelayStruct struct {
+	Mode string `yaml:"mode"`
+	Type string `yaml:"type"`
+	Edge string `yaml:"edge"`
+	Stream string `yaml:"stream"`
+}
+
 // Config lib 
 type Config struct {
 	Server struct {
@@ -22,6 +30,9 @@ type Config struct {
 	Cluster struct {
 		Origins []string `yaml:"origins,flow"`
 	} `yaml:"cluster"`
+
+
+	Relays []RelayStruct `yaml:"relay,flow"`
 
 	Capability struct {
 		Audio struct {
@@ -39,6 +50,10 @@ type Config struct {
 		} `yaml:"video"`
 	}
 
+	StaticRelays map[string]*RelayStruct
+	DynamicRelay *RelayStruct
+	AudioCapability *sdp.Capability
+	VideoCapability *sdp.Capability
 	Capabilities map[string]*sdp.Capability
 }
 
@@ -49,6 +64,23 @@ func LoadConfigBytes(data []byte) (*Config, error) {
 	err := yaml.Unmarshal(data, &config)
 	if err != nil {
 		return nil, err
+	}
+
+	config.StaticRelays = make(map[string]*RelayStruct)
+
+	for _,relay := range config.Relays {
+		if relay.Type == "static" {
+			if relay.Stream == "" {
+				return nil, errors.New("static relay should have stream name")
+			}
+			config.StaticRelays[relay.Stream] = &relay
+		}
+		if relay.Type == "dynamic" {
+			if config.DynamicRelay != nil {
+				return nil, errors.New("dynamic relay should just have one ")
+			}
+			config.DynamicRelay = &relay
+		}
 	}
 
 	if len(config.Capability.Audio.Codecs) == 0 && len(config.Capability.Video.Codecs) == 0 {
@@ -62,6 +94,7 @@ func LoadConfigBytes(data []byte) (*Config, error) {
 			Codecs:     config.Capability.Audio.Codecs,
 			Extensions: config.Capability.Audio.Extensions,
 		}
+		config.AudioCapability = audioCapability
 		config.Capabilities["audio"] = audioCapability
 	}
 
@@ -79,6 +112,7 @@ func LoadConfigBytes(data []byte) (*Config, error) {
 			Extensions: config.Capability.Video.Extensions,
 			Rtcpfbs:    rtcpfbs,
 		}
+		config.VideoCapability = videoCapability
 		config.Capabilities["video"] = videoCapability
 	}
 
