@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/notedit/sdp"
 	"github.com/notedit/rtmp-lib/aac"
 	"github.com/notedit/rtmp-lib/av"
 	"github.com/notedit/rtmp-lib/h264"
+	"github.com/notedit/sdp"
 
 	gstreamer "github.com/notedit/gstreamer-go"
 	mediaserver "github.com/notedit/media-server-go"
@@ -207,5 +207,4 @@ func (p *RTMPPublisher) Stop() {
 		p.videoSession.Stop()
 	}
 
-	// gstreamer pipeline clean
 }
