@@ -11,12 +11,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/imroc/req"
 	mediaserver "github.com/notedit/media-server-go"
-	"github.com/notedit/sdp"
 	"github.com/notedit/rtclive/config"
 	"github.com/notedit/rtclive/router"
 	"github.com/notedit/rtclive/store"
-	rtmp "github.com/notedit/rtmp-lib"
-	"github.com/notedit/rtmp-lib/av"
+	"github.com/notedit/sdp"
 	"github.com/olahol/melody"
 )
 
@@ -42,7 +40,6 @@ type Server struct {
 	melodyRouter *melody.Melody
 	httpServer   *gin.Engine
 	endpoint     *mediaserver.Endpoint
-	rtmpServer   *rtmp.Server
 	cfg          *config.Config
 }
 
@@ -51,18 +48,16 @@ func New(cfg *config.Config) *Server {
 	server := &Server{}
 	server.cfg = cfg
 	server.melodyRouter = melody.New()
-	server.melodyRouter.Config.MaxMessageSize = 1024 * 10
-	server.melodyRouter.Config.MessageBufferSize = 1024 * 10
+	server.melodyRouter.Config.MaxMessageSize = 1024 * 100
+	server.melodyRouter.Config.MessageBufferSize = 1024 * 100
 
 	gin.SetMode(gin.ReleaseMode)
 	httpServer := gin.Default()
 	httpServer.Use(cors.Default())
 
-
 	httpServer.GET("/live/:stream", func(c *gin.Context) {
 		server.melodyRouter.HandleRequest(c.Writer, c.Request)
 	})
-
 
 	httpServer.POST("/pull", server.pullStream)
 	httpServer.POST("/unpull", server.unpullStream)
@@ -79,10 +74,6 @@ func New(cfg *config.Config) *Server {
 }
 
 func (self *Server) ListenAndServe() {
-
-	// if self.cfg.Rtmp.Port > 0 {
-	// 	go self.startRtmp()
-	// }
 
 	self.httpServer.Run(self.cfg.Server.Host + ":" + strconv.Itoa(self.cfg.Server.Port))
 }
@@ -128,8 +119,6 @@ func (self *Server) onmessage(s *melody.Session, msg []byte) {
 		fmt.Println("error", err)
 		return
 	}
-
-	fmt.Println("message", message.Cmd, message.StreamID)
 
 	switch message.Cmd {
 	case "publish":
@@ -240,8 +229,6 @@ func (self *Server) pullStream(c *gin.Context) {
 	}
 
 	subscriber, answer := mediaRouter.CreateSubscriber(data.Sdp)
-
-	fmt.Println("answer", answer)
 
 	c.JSON(200, gin.H{"s": 10000, "d": map[string]string{
 		"sdp":          answer,
@@ -359,57 +346,4 @@ func (self *Server) pullStreamFromOrigin(streamID string, origins []string) (*ro
 	}
 
 	return nil, errors.New("can not find stream")
-}
-
-func (self *Server) startRtmp() {
-
-	self.rtmpServer = &rtmp.Server{}
-
-	self.rtmpServer.HandlePublish = func(conn *rtmp.Conn) {
-
-		streaminfo := strings.Split(conn.URL.Path, "/")
-
-		if len(streaminfo) <= 2 {
-			fmt.Println("rtmp url does not match, rtmp url should like rtmp://host:/appname/streamname")
-			conn.Close()
-			return
-		}
-
-		streamName := streaminfo[len(streaminfo)-1]
-
-		capabilitys := self.cfg.Capabilities
-
-		mediaRouter := router.NewMediaRouter(streamName, self.endpoint, capabilitys, true)
-
-		publisher := mediaRouter.CreateRTMPPublisher(streamName)
-		store.AddRouter(mediaRouter)
-
-		var streams []av.CodecData
-		var err error
-
-		if streams, err = conn.Streams(); err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		if err = publisher.WriteHeader(streams); err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		for {
-			packet, err := conn.ReadPacket()
-			if err != nil {
-				fmt.Println(err)
-				break
-			}
-			publisher.WritePacket(packet)
-		}
-
-		store.RemoveRouter(mediaRouter)
-		mediaRouter.Stop()
-
-	}
-
-	self.rtmpServer.ListenAndServe()
 }
