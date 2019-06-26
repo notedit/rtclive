@@ -40,9 +40,15 @@ func (s *Server) ListenAndServe() {
 	// s.httpServer.POST("/unpull", s.unpullStream)
 
 	s.httpServer.POST("/publish", s.publish)
+	s.httpServer.POST("/unpublish", s.unpublish)
 	s.httpServer.POST("/play", s.play)
+	s.httpServer.POST("/unplay", s.unplay)
 
-	s.httpServer.Run(s.cfg.Server.Host + ":" + strconv.Itoa(s.cfg.Server.Port))
+	address := s.cfg.Server.Host + ":" + strconv.Itoa(s.cfg.Server.Port)
+
+	fmt.Println("start listen on " + address)
+
+	s.httpServer.Run(address)
 }
 
 func (s *Server) play(c *gin.Context) {
@@ -107,6 +113,35 @@ func (s *Server) publish(c *gin.Context) {
 		"d": map[string]string{
 			"sdp": answer,
 		}})
+}
+
+func (s *Server) unpublish(c *gin.Context) {
+
+	var data struct {
+		StreamURL string `json:"streamUrl"`
+		StreamID  string `json:"streamId"`
+	}
+
+	if err := c.ShouldBind(&data); err != nil {
+		c.JSON(200, gin.H{"s": 10001, "e": err})
+		return
+	}
+
+	mediarouter := store.GetRouter(data.StreamID)
+
+	if mediarouter != nil {
+		mediarouter.Stop()
+		store.RemoveRouter(mediarouter)
+	}
+
+	c.JSON(200, gin.H{
+		"s": 10000,
+		"d": map[string]string{},
+	})
+}
+
+func (s *Server) unplay(c *gin.Context) {
+
 }
 
 func (s *Server) pullStream(c *gin.Context) {
