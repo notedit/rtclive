@@ -4,7 +4,7 @@ import (
 	"errors"
 	"io/ioutil"
 
-	"github.com/notedit/media-server-go/sdp"
+	"github.com/notedit/sdp"
 	"gopkg.in/yaml.v2"
 )
 

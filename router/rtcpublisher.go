@@ -2,7 +2,7 @@ package router
 
 import (
 	mediaserver "github.com/notedit/media-server-go"
-	"github.com/notedit/media-server-go/sdp"
+	"github.com/notedit/sdp"
 )
 
 // RTCPublisher struct

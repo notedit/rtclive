@@ -54,6 +54,7 @@ github.com/notedit/rtmp-lib v0.0.0-20190225070819-94fa3383c631 h1:Kaf7wZOhDIsGTE
 github.com/notedit/rtmp-lib v0.0.0-20190225070819-94fa3383c631/go.mod h1:Ua4gNG+L57n+AkZfSrsV+VGoWDuOTd7eux+CBjGPeF0=
 github.com/notedit/rtmp-lib v0.0.1 h1:bezXVVCnyfefQYURECA//37cJ2RrAioIaiXC254iUT4=
 github.com/notedit/rtmp-lib v0.0.1/go.mod h1:Ua4gNG+L57n+AkZfSrsV+VGoWDuOTd7eux+CBjGPeF0=
+github.com/notedit/sdp v0.0.0-20190418080450-702b42591eb2/go.mod h1:GbICVEB3gb4OfNreIqFKFqWASbpTgrB+Q6lErFpYeaY=
 github.com/notedit/sdp v0.0.1 h1:rZG0gaUAhq2oZsj5moW/WRwjSXVmn9tGET/BnB8xTzg=
 github.com/notedit/sdp v0.0.1/go.mod h1:GbICVEB3gb4OfNreIqFKFqWASbpTgrB+Q6lErFpYeaY=
 github.com/olahol/melody v0.0.0-20180227134253-7bd65910e5ab h1:2fsluM+sAZRIQtvloPaokkWWjV8strYfmXsDCtZMqt0=
