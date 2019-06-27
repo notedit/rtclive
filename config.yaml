@@ -9,9 +9,11 @@ media:
   endpoint: 127.0.0.1
 
 
-# rtmp server listen port  
-rtmp:
-  port: 1935
+
+# rtclive support server relay, when rtclive server can not find one stream, it will find stream relay url from relay server.
+relay: 
+  url: http://localhost:5000/onrelay
+
 
 
 # rtclive support server relay, when rtclive server can not find one stream, it will find stream from origin servers.

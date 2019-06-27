@@ -10,9 +10,7 @@ import (
 	mediaserver "github.com/notedit/media-server-go"
 	"github.com/notedit/rtclive/config"
 	"github.com/notedit/rtclive/router"
-	"github.com/notedit/rtclive/store"
 )
-
 
 type Server struct {
 	httpServer *gin.Engine
@@ -66,7 +64,7 @@ func (s *Server) play(c *gin.Context) {
 		return
 	}
 
-	router := store.GetRouter(data.StreamID)
+	router := routers.GetRouter(data.StreamID)
 
 	if router == nil {
 		c.JSON(200, gin.H{"s": 10002, "e": "does not exist"})
@@ -82,7 +80,7 @@ func (s *Server) play(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"s": 10000,
 		"d": map[string]string{
-			"sdp": answer,
+			"sdp":          answer,
 			"subscriberId": subscriber.GetID(),
 		}})
 
@@ -105,7 +103,7 @@ func (s *Server) publish(c *gin.Context) {
 
 	mediarouter := router.NewMediaRouter(data.StreamID, s.endpoint, capabilities, true)
 	publisher := mediarouter.CreatePublisher(data.Sdp)
-	store.AddRouter(mediarouter)
+	routers.AddRouter(mediarouter)
 
 	answer := publisher.GetAnswer()
 
@@ -130,11 +128,11 @@ func (s *Server) unpublish(c *gin.Context) {
 		return
 	}
 
-	mediarouter := store.GetRouter(data.StreamID)
+	mediarouter := routers.GetRouter(data.StreamID)
 
 	if mediarouter != nil {
 		mediarouter.Stop()
-		store.RemoveRouter(mediarouter)
+		routers.RemoveRouter(mediarouter)
 	}
 
 	c.JSON(200, gin.H{
@@ -143,21 +141,20 @@ func (s *Server) unpublish(c *gin.Context) {
 	})
 }
 
-
 func (s *Server) unplay(c *gin.Context) {
 
 	var data struct {
-		StreamURL string `json:"streamUrl"`
-		StreamID  string `json:"streamId"`
+		StreamURL    string `json:"streamUrl"`
+		StreamID     string `json:"streamId"`
 		SubscriberID string `json:"subscriberId"`
 	}
 
 	if err := c.ShouldBind(&data); err != nil {
-		c.JSON(200, gin.H{"s":10001, "e": err})
+		c.JSON(200, gin.H{"s": 10001, "e": err})
 		return
 	}
 
-	mediarouter := store.GetRouter(data.StreamID)
+	mediarouter := routers.GetRouter(data.StreamID)
 
 	if mediarouter != nil {
 		mediarouter.StopSubscriber(data.SubscriberID)
@@ -181,7 +178,7 @@ func (s *Server) pullStream(c *gin.Context) {
 		return
 	}
 
-	mediaRouter := store.GetRouter(data.StreamID)
+	mediaRouter := routers.GetRouter(data.StreamID)
 
 	if mediaRouter == nil {
 		c.JSON(200, gin.H{"s": 10002, "e": "can not find stream"})
@@ -210,7 +207,7 @@ func (s *Server) unpullStream(c *gin.Context) {
 		return
 	}
 
-	mediaRouter := store.GetRouter(data.StreamID)
+	mediaRouter := routers.GetRouter(data.StreamID)
 
 	if mediaRouter == nil {
 		c.JSON(200, gin.H{"s": 10002, "e": "can not find stream"})

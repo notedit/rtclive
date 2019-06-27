@@ -8,24 +8,24 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type serverstruct struct {
+	Port int    `yaml:"port"`
+	Host string `yaml:"host"`
+}
+
+type mediastruct struct {
+	Endpoint string `yaml:"endpoint"`
+}
+
+type relaystruct struct {
+	URL string `yaml:"url"`
+}
+
+// Config struct
 type Config struct {
-	Server struct {
-		Port int    `yaml:"port"`
-		Host string `yaml:"host"`
-	} `yaml:"server"`
-
-	Rtmp struct {
-		Port int `yaml:"port"`
-	} `yaml:"rtmp"`
-
-	Media struct {
-		Endpoint string `yaml:"endpoint"`
-	} `yaml:"media"`
-
-	Cluster struct {
-		Origins []string `yaml:"origins,flow"`
-	} `yaml:"cluster"`
-
+	Server     *serverstruct `yaml:"server"`
+	Media      *mediastruct  `yaml:"media"`
+	Relay      *relaystruct  `yaml:"relay"`
 	Capability struct {
 		Audio struct {
 			Codecs     []string `yaml:"codecs,flow"`
@@ -41,7 +41,6 @@ type Config struct {
 			} `yaml:"rtcpfbc,flow"`
 		} `yaml:"video"`
 	}
-
 	Capabilities map[string]*sdp.Capability
 }
 
