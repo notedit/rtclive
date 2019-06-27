@@ -13,6 +13,7 @@ import (
 	"github.com/notedit/rtclive/store"
 )
 
+
 type Server struct {
 	httpServer *gin.Engine
 	endpoint   *mediaserver.Endpoint
@@ -34,6 +35,7 @@ func New(cfg *config.Config) *Server {
 	return server
 }
 
+// ListenAndServe  start to listen and serve
 func (s *Server) ListenAndServe() {
 
 	// s.httpServer.POST("/pull", s.pullStream)
@@ -81,6 +83,7 @@ func (s *Server) play(c *gin.Context) {
 		"s": 10000,
 		"d": map[string]string{
 			"sdp": answer,
+			"subscriberId": subscriber.GetID(),
 		}})
 
 }
@@ -140,8 +143,30 @@ func (s *Server) unpublish(c *gin.Context) {
 	})
 }
 
+
 func (s *Server) unplay(c *gin.Context) {
 
+	var data struct {
+		StreamURL string `json:"streamUrl"`
+		StreamID  string `json:"streamId"`
+		SubscriberID string `json:"subscriberId"`
+	}
+
+	if err := c.ShouldBind(&data); err != nil {
+		c.JSON(200, gin.H{"s":10001, "e": err})
+		return
+	}
+
+	mediarouter := store.GetRouter(data.StreamID)
+
+	if mediarouter != nil {
+		mediarouter.StopSubscriber(data.SubscriberID)
+	}
+
+	c.JSON(200, gin.H{
+		"s": 10000,
+		"d": map[string]string{},
+	})
 }
 
 func (s *Server) pullStream(c *gin.Context) {

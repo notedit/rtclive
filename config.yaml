@@ -35,6 +35,7 @@ capability:
       - h264
     rtx: true
     rtcpfbc:
+      - id: goog-remb
       - id: transport-cc
       - id: ccm
         params: [fir]

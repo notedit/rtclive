@@ -18,3 +18,6 @@ rtclive
 temp/
 
 .vscode/
+
+
+.DS_Store

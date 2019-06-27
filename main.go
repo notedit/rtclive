@@ -14,12 +14,12 @@ func main() {
 	var err error
 	var cfg *config.Config
 	parser := argparse.NewParser("rtclive", "rtclive: WebRTC/RTMP based live streaming server")
-	configfile := parser.String("c", "config", &argparse.Options{Required: true, Help: "configpath is required"})
+	configfile := parser.String("c", "config", &argparse.Options{Required: false, Help: "config file path", Default: "config.yaml"})
 
 	err = parser.Parse(os.Args)
 
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println(parser.Usage(err))
 		return
 	}
 
