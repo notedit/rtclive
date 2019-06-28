@@ -1,6 +1,8 @@
 package router
 
 import (
+	"fmt"
+
 	"github.com/gofrs/uuid"
 	mediaserver "github.com/notedit/media-server-go"
 	"github.com/notedit/sdp"
@@ -45,6 +47,7 @@ func NewRTCSubscriber(sdpStr string, endpoint *mediaserver.Endpoint, capabilitie
 		transport: transport,
 		answer:    answer.String(),
 	}
+
 	return subscriber
 }
 
@@ -63,10 +66,14 @@ func (s *RTCSubscriber) Attach(publisher Publisher) {
 
 	if publisher.GetAudioTrack() != nil {
 		s.outgoing.GetAudioTracks()[0].AttachTo(publisher.GetAudioTrack())
+	} else {
+		fmt.Println("Attach audio track")
 	}
 
 	if publisher.GetVideoTrack() != nil {
 		s.outgoing.GetVideoTracks()[0].AttachTo(publisher.GetVideoTrack())
+	} else {
+		fmt.Println("Attach video track")
 	}
 }
 

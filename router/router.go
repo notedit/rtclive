@@ -81,6 +81,13 @@ func (r *MediaRouter) CreateRelayPublisher(offerStr string, answerStr string) *R
 	return publisher
 }
 
+func (r *MediaRouter) CreateRTMPPublisher(streamID string, streamURL string) *RTMPPublisher {
+
+	publisher := NewRTMPPublisher(streamID, streamURL, r.capabilities)
+	r.publisher = publisher
+	return publisher
+}
+
 func (r *MediaRouter) CreateSubscriber(sdpStr string) Subscriber {
 
 	subscriber := NewRTCSubscriber(sdpStr, r.endpoint, r.capabilities)

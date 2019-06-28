@@ -9,9 +9,7 @@ import (
 	mediaserver "github.com/notedit/media-server-go"
 )
 
-const rtmp2rtp = `rtmpsrc location=%s ! flvdemux name=demux  
-demux.audio_0 ! queue ! decodebin ! audioconvert ! audioresample ! opusenc ! rtpopuspay timestamp-offset=0 pt=%d ! appsink name=audiosink  
-demux.video_0 ! queue ! h264parse ! rtph264pay timestamp-offset=0 config-interval=-1 pt=%d ! appsink name=videosink`
+const rtmp2rtp = `rtmpsrc location=%s ! flvdemux ! queue ! h264parse ! rtph264pay timestamp-offset=0 config-interval=-1 pt=%d ! appsink name=videosink`
 
 // RTMPPublisher  rtmp publisher
 type RTMPPublisher struct {
@@ -41,13 +39,10 @@ func NewRTMPPublisher(streamID string, rtmpURL string, capabilities map[string]*
 	publisher.videoSession = publisher.streamer.CreateSession(videoMediaInfo)
 
 	audioMediaInfo := sdp.MediaInfoCreate("audio", capabilities["audio"])
-	audioPt := audioMediaInfo.GetCodec("opus").GetType()
+	//audioPt := audioMediaInfo.GetCodec("opus").GetType()
 	publisher.audioSession = publisher.streamer.CreateSession(audioMediaInfo)
 
-	fmt.Println("videoPt", videoPt)
-	fmt.Println("AudioPt", audioPt)
-
-	pipelineStr := fmt.Sprintf(rtmp2rtp, rtmpURL, videoPt, audioPt)
+	pipelineStr := fmt.Sprintf(rtmp2rtp, rtmpURL, videoPt)
 
 	fmt.Println(pipelineStr)
 
@@ -56,7 +51,7 @@ func NewRTMPPublisher(streamID string, rtmpURL string, capabilities map[string]*
 		panic(err)
 	}
 
-	publisher.audiosink = pipeline.FindElement("audiosink")
+	//publisher.audiosink = pipeline.FindElement("audiosink")
 	publisher.videosink = pipeline.FindElement("videosink")
 
 	publisher.pipeline = pipeline
@@ -64,9 +59,12 @@ func NewRTMPPublisher(streamID string, rtmpURL string, capabilities map[string]*
 	return publisher
 }
 
+// Start start the pipeline
 func (p *RTMPPublisher) Start() <-chan struct{} {
 
 	done := make(chan struct{})
+
+	p.pipeline.Start()
 
 	videoout := p.videosink.Poll()
 
@@ -76,26 +74,25 @@ func (p *RTMPPublisher) Start() <-chan struct{} {
 		}
 	}()
 
-	audioout := p.audiosink.Poll()
+	// audioout := p.audiosink.Poll()
 
-	go func() {
-		for rtp := range audioout {
-			p.audioSession.Push(rtp)
-		}
-	}()
+	// go func() {
+	// 	for rtp := range audioout {
+	// 		p.audioSession.Push(rtp)
+	// 	}
+	// }()
 
 	messages := p.pipeline.PullMessage()
 
 	go func() {
 		for message := range messages {
+			fmt.Println(message.GetTypeName())
 			if message.GetType() == gstreamer.MESSAGE_EOS || message.GetType() == gstreamer.MESSAGE_ERROR {
 				done <- struct{}{}
 			}
-			fmt.Println(message.GetTypeName())
+
 		}
 	}()
-
-	p.pipeline.Start()
 
 	return done
 }
