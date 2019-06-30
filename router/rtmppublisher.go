@@ -1,27 +1,49 @@
 package router
 
 import (
+	"bytes"
 	"fmt"
 
+	rtmp "github.com/notedit/rtmp-lib"
+	"github.com/notedit/rtmp-lib/aac"
+	"github.com/notedit/rtmp-lib/av"
+	"github.com/notedit/rtmp-lib/h264"
 	"github.com/notedit/sdp"
 
 	gstreamer "github.com/notedit/gstreamer-go"
 	mediaserver "github.com/notedit/media-server-go"
 )
 
-const rtmp2rtp = `rtmpsrc location=%s ! flvdemux ! queue ! h264parse ! rtph264pay timestamp-offset=0 config-interval=-1 pt=%d ! appsink name=videosink`
+const video2rtp = `appsrc do-timestamp=true is-live=true name=videosrc ! h264parse ! rtph264pay timestamp-offset=0 config-interval=-1 pt=%d ! udpsink host=127.0.0.1 port=%d`
+const audio2rtp = `appsrc do-timestamp=true is-live=true name=audiosrc ! decodebin ! audioconvert ! audioresample ! opusenc ! rtpopuspay timestamp-offset=0 pt=%d ! udpsink host=127.0.0.1 port=%d`
+
+const rtmp2rtp = `rtmpsrc location=rtmp://127.0.0.1/live/stream ! flvdemux ! queue ! h264parse ! rtph264pay timestamp-offset=0 config-interval=-1 pt=97 ! udpsink host=127.0.0.1 port=62164`
+
+var startCodeBytes = []byte{0, 0, 0, 1}
 
 // RTMPPublisher  rtmp publisher
 type RTMPPublisher struct {
 	id string
 
-	pipeline  *gstreamer.Pipeline
-	audiosink *gstreamer.Element
-	videosink *gstreamer.Element
+	videoPipeline *gstreamer.Pipeline
+	audioPipeline *gstreamer.Pipeline
 
-	streamer     *mediaserver.RawStreamer
-	videoSession *mediaserver.RawStreamerSession
-	audioSession *mediaserver.RawStreamerSession
+	streams        []av.CodecData
+	videoCodecData h264.CodecData
+	audioCodecData aac.CodecData
+
+	adts []byte
+
+	audiosrc *gstreamer.Element
+	videosrc *gstreamer.Element
+
+	videoSession *mediaserver.StreamerSession
+	audioSession *mediaserver.StreamerSession
+
+	videoWriteBuffer bytes.Buffer
+	audioWriteBuffer bytes.Buffer
+
+	capabilities map[string]*sdp.Capability
 
 	rtmpURL string
 }
@@ -32,67 +54,70 @@ func NewRTMPPublisher(streamID string, rtmpURL string, capabilities map[string]*
 	publisher := &RTMPPublisher{}
 	publisher.id = streamID
 	publisher.rtmpURL = rtmpURL
-
-	publisher.streamer = mediaserver.NewRawStreamer()
-	videoMediaInfo := sdp.MediaInfoCreate("video", capabilities["video"])
-	videoPt := videoMediaInfo.GetCodec("h264").GetType()
-	publisher.videoSession = publisher.streamer.CreateSession(videoMediaInfo)
-
-	audioMediaInfo := sdp.MediaInfoCreate("audio", capabilities["audio"])
-	//audioPt := audioMediaInfo.GetCodec("opus").GetType()
-	publisher.audioSession = publisher.streamer.CreateSession(audioMediaInfo)
-
-	pipelineStr := fmt.Sprintf(rtmp2rtp, rtmpURL, videoPt)
-
-	fmt.Println(pipelineStr)
-
-	pipeline, err := gstreamer.New(pipelineStr)
-	if err != nil {
-		panic(err)
-	}
-
-	//publisher.audiosink = pipeline.FindElement("audiosink")
-	publisher.videosink = pipeline.FindElement("videosink")
-
-	publisher.pipeline = pipeline
+	publisher.capabilities = capabilities
 
 	return publisher
 }
 
 // Start start the pipeline
-func (p *RTMPPublisher) Start() <-chan struct{} {
+func (p *RTMPPublisher) Start() <-chan error {
 
-	done := make(chan struct{})
+	done := make(chan error, 1)
 
-	p.pipeline.Start()
+	conn, err := rtmp.Dial(p.rtmpURL)
 
-	videoout := p.videosink.Poll()
+	if err != nil {
+		done <- err
+		return done
+	}
 
-	go func() {
-		for rtp := range videoout {
-			p.videoSession.Push(rtp)
+	streams, err := conn.Streams()
+
+	if err != nil {
+		done <- err
+		return done
+	}
+
+	for _, stream := range streams {
+		if stream.Type() == av.H264 {
+			p.videoCodecData = stream.(h264.CodecData)
 		}
-	}()
-
-	// audioout := p.audiosink.Poll()
-
-	// go func() {
-	// 	for rtp := range audioout {
-	// 		p.audioSession.Push(rtp)
-	// 	}
-	// }()
-
-	messages := p.pipeline.PullMessage()
-
-	go func() {
-		for message := range messages {
-			fmt.Println(message.GetTypeName())
-			if message.GetType() == gstreamer.MESSAGE_EOS || message.GetType() == gstreamer.MESSAGE_ERROR {
-				done <- struct{}{}
-			}
-
+		if stream.Type() == av.AAC {
+			p.audioCodecData = stream.(aac.CodecData)
+			p.adts = make([]byte, 7)
 		}
-	}()
+	}
+
+	p.streams = streams
+
+	videoMediaInfo := sdp.MediaInfoCreate("video", p.capabilities["video"])
+	videoPt := videoMediaInfo.GetCodec("h264").GetType()
+	p.videoSession = mediaserver.NewStreamerSession(videoMediaInfo)
+
+	audioMediaInfo := sdp.MediaInfoCreate("audio", p.capabilities["audio"])
+	audioPt := audioMediaInfo.GetCodec("opus").GetType()
+	p.audioSession = mediaserver.NewStreamerSession(audioMediaInfo)
+
+	video2rtpstr := fmt.Sprintf(video2rtp, videoPt, p.videoSession.GetLocalPort())
+	fmt.Println(video2rtpstr)
+	p.videoPipeline, err = gstreamer.New(video2rtpstr)
+	if err != nil {
+		panic(err)
+	}
+	p.videosrc = p.videoPipeline.FindElement("videosrc")
+
+	audio2rtpstr := fmt.Sprintf(audio2rtp, audioPt, p.audioSession.GetLocalPort())
+	fmt.Println(audio2rtpstr)
+	p.audioPipeline, err = gstreamer.New(audio2rtpstr)
+	if err != nil {
+		panic(err)
+	}
+	p.audiosrc = p.audioPipeline.FindElement("audiosrc")
+
+	p.audioPipeline.Start()
+	p.videoPipeline.Start()
+
+	go p.handleMediaPacket(conn, done)
 
 	return done
 }
@@ -125,6 +150,55 @@ func (p *RTMPPublisher) GetAudioTrack() *mediaserver.IncomingStreamTrack {
 	return nil
 }
 
+func (p *RTMPPublisher) handleMediaPacket(conn *rtmp.Conn, done chan error) {
+
+	for {
+		packet, err := conn.ReadPacket()
+		//fmt.Println("got pakcet")
+		if err != nil {
+			done <- err
+			break
+		}
+
+		p.writePacket(packet)
+	}
+
+}
+
+func (p *RTMPPublisher) writePacket(packet av.Packet) {
+
+	stream := p.streams[packet.Idx]
+
+	if stream.Type() == av.H264 {
+		if packet.IsKeyFrame {
+			p.videoWriteBuffer.Write(startCodeBytes)
+			p.videoWriteBuffer.Write(p.videoCodecData.SPS())
+			p.videoWriteBuffer.Write(startCodeBytes)
+			p.videoWriteBuffer.Write(p.videoCodecData.PPS())
+			p.videosrc.Push(p.videoWriteBuffer.Bytes())
+			p.videoWriteBuffer.Reset()
+		}
+		pktnalus, _ := h264.SplitNALUs(packet.Data)
+		if len(pktnalus) > 1 {
+			//fmt.Println("av.Packet has more than one nals")
+		}
+		for _, nalu := range pktnalus {
+			p.videoWriteBuffer.Write(startCodeBytes)
+			p.videoWriteBuffer.Write(nalu)
+			p.videosrc.Push(p.videoWriteBuffer.Bytes())
+			p.videoWriteBuffer.Reset()
+		}
+	}
+
+	if stream.Type() == av.AAC {
+		aac.FillADTSHeader(p.adts, p.audioCodecData.Config, 1024, len(packet.Data))
+		p.audioWriteBuffer.Write(p.adts)
+		p.audioWriteBuffer.Write(packet.Data)
+		p.audiosrc.Push(p.audioWriteBuffer.Bytes())
+		p.audioWriteBuffer.Reset()
+	}
+}
+
 // Stop  stop this publisher
 func (p *RTMPPublisher) Stop() {
 
@@ -136,15 +210,20 @@ func (p *RTMPPublisher) Stop() {
 		p.videoSession.Stop()
 	}
 
-	if p.videosink != nil {
-		p.videosink.Stop()
+	if p.videosrc != nil {
+		p.videosrc.Stop()
 	}
 
-	if p.audiosink != nil {
-		p.audiosink.Stop()
+	if p.audiosrc != nil {
+		p.audiosrc.Stop()
 	}
 
-	if p.pipeline != nil {
-		p.pipeline.Stop()
+	if p.videoPipeline != nil {
+		p.videoPipeline.Stop()
 	}
+
+	if p.audioPipeline != nil {
+		p.audioPipeline.Stop()
+	}
+
 }

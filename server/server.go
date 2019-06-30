@@ -118,8 +118,6 @@ func (s *Server) play(c *gin.Context) {
 
 	answer := subscriber.GetAnswer()
 
-	fmt.Println("answer", answer)
-
 	c.JSON(200, gin.H{
 		"s": 10000,
 		"d": map[string]string{
