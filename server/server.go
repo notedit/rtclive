@@ -13,6 +13,7 @@ import (
 	mediaserver "github.com/notedit/media-server-go"
 	"github.com/notedit/rtclive/config"
 	"github.com/notedit/rtclive/router"
+	"github.com/notedit/rtmp-lib"
 )
 
 type Server struct {
@@ -20,6 +21,8 @@ type Server struct {
 	httpServer *gin.Engine
 
 	cfg *config.Config
+
+	rtmpServer *rtmp.Server
 
 	endpoints map[string]*mediaserver.Endpoint
 	routers   map[string]*router.MediaRouter
@@ -58,6 +61,10 @@ func (s *Server) ListenAndServe() {
 
 	fmt.Println("start listen on " + address)
 
+	if s.cfg.Rtmp != nil {
+
+	}
+
 	s.httpServer.Run(address)
 }
 
@@ -95,19 +102,27 @@ func (s *Server) play(c *gin.Context) {
 		if strings.HasPrefix(relayStreamURL, "rtmp://") {
 			// rtmp relay
 
+			conn, err := rtmp.Dial(relayStreamURL)
+
+			if err != nil {
+				c.JSON(200, gin.H{"s": 10003, "e": "stream relay error"})
+				return
+			}
+
 			endpoint := s.getEndpoint(data.StreamID)
 			mediarouter = router.NewMediaRouter(data.StreamID, endpoint, s.cfg.Capabilities, true)
-			publisher := mediarouter.CreateRTMPPublisher(data.StreamID, relayStreamURL)
+			publisher := mediarouter.CreateRTMPPublisher(data.StreamID, conn)
 
 			done := publisher.Start()
+
+			s.addRouter(mediarouter)
 
 			go func() {
 				<-done
 				fmt.Println("publisher done ")
 				mediarouter.Stop()
+				s.removeRouter(mediarouter.GetID())
 			}()
-
-			s.addRouter(mediarouter)
 
 		} else if strings.HasPrefix(relayStreamURL, "webrtc://") {
 			// webrtc relay
@@ -139,6 +154,8 @@ func (s *Server) publish(c *gin.Context) {
 		c.JSON(200, gin.H{"s": 10001, "e": err})
 		return
 	}
+
+	// todo check exist
 
 	capabilities := s.cfg.Capabilities
 
@@ -296,6 +313,45 @@ func (s *Server) unpullStream(c *gin.Context) {
 	mediaRouter.StopSubscriber(data.SubscriberID)
 
 	c.JSON(200, gin.H{"s": 10000, "d": map[string]string{}})
+}
+
+func (s *Server) startRtmp() {
+
+	s.rtmpServer = &rtmp.Server{
+		Addr: fmt.Sprintf("%s:%d", s.cfg.Rtmp.Host, s.cfg.Rtmp.Port),
+	}
+
+	s.rtmpServer.HandlePublish = func(conn *rtmp.Conn) {
+
+		streaminfo := strings.Split(conn.URL.Path, "/")
+
+		if len(streaminfo) <= 2 {
+			fmt.Println("rtmp url does not match, rtmp url should like rtmp://host:port/app/stream")
+			conn.Close()
+			return
+		}
+
+		streamID := streaminfo[len(streaminfo)-1]
+
+		// todo check exist
+
+		endpoint := s.getEndpoint(streamID)
+		capabilities := s.cfg.Capabilities
+
+		mediarouter := router.NewMediaRouter(streamID, endpoint, capabilities, true)
+		publisher := mediarouter.CreateRTMPPublisher(streamID, conn)
+		s.addRouter(mediarouter)
+
+		done := publisher.Start()
+
+		err := <-done
+
+		fmt.Println("error ", err)
+		fmt.Println("publisher done ")
+		mediarouter.Stop()
+		s.removeRouter(mediarouter.GetID())
+
+	}
 }
 
 func (s *Server) getEndpoint(streamID string) *mediaserver.Endpoint {

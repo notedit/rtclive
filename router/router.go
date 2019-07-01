@@ -3,6 +3,8 @@ package router
 import (
 	"sync"
 
+	"github.com/notedit/rtmp-lib"
+
 	mediaserver "github.com/notedit/media-server-go"
 	"github.com/notedit/sdp"
 )
@@ -81,9 +83,9 @@ func (r *MediaRouter) CreateRelayPublisher(offerStr string, answerStr string) *R
 	return publisher
 }
 
-func (r *MediaRouter) CreateRTMPPublisher(streamID string, streamURL string) *RTMPPublisher {
+func (r *MediaRouter) CreateRTMPPublisher(streamID string, conn *rtmp.Conn) *RTMPPublisher {
 
-	publisher := NewRTMPPublisher(streamID, streamURL, r.capabilities)
+	publisher := NewRTMPPublisher(streamID, conn, r.capabilities)
 	r.publisher = publisher
 	return publisher
 }

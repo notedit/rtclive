@@ -17,8 +17,6 @@ import (
 const video2rtp = `appsrc do-timestamp=true is-live=true name=videosrc ! h264parse ! rtph264pay timestamp-offset=0 config-interval=-1 pt=%d ! udpsink host=127.0.0.1 port=%d`
 const audio2rtp = `appsrc do-timestamp=true is-live=true name=audiosrc ! decodebin ! audioconvert ! audioresample ! opusenc ! rtpopuspay timestamp-offset=0 pt=%d ! udpsink host=127.0.0.1 port=%d`
 
-const rtmp2rtp = `rtmpsrc location=rtmp://127.0.0.1/live/stream ! flvdemux ! queue ! h264parse ! rtph264pay timestamp-offset=0 config-interval=-1 pt=97 ! udpsink host=127.0.0.1 port=62164`
-
 var startCodeBytes = []byte{0, 0, 0, 1}
 
 // RTMPPublisher  rtmp publisher
@@ -46,15 +44,16 @@ type RTMPPublisher struct {
 	capabilities map[string]*sdp.Capability
 
 	rtmpURL string
+	conn    *rtmp.Conn
 }
 
 // NewRTMPPublisher  new rtmp publisher
-func NewRTMPPublisher(streamID string, rtmpURL string, capabilities map[string]*sdp.Capability) *RTMPPublisher {
+func NewRTMPPublisher(streamID string, conn *rtmp.Conn, capabilities map[string]*sdp.Capability) *RTMPPublisher {
 
 	publisher := &RTMPPublisher{}
 	publisher.id = streamID
-	publisher.rtmpURL = rtmpURL
 	publisher.capabilities = capabilities
+	publisher.conn = conn
 
 	return publisher
 }
@@ -64,14 +63,7 @@ func (p *RTMPPublisher) Start() <-chan error {
 
 	done := make(chan error, 1)
 
-	conn, err := rtmp.Dial(p.rtmpURL)
-
-	if err != nil {
-		done <- err
-		return done
-	}
-
-	streams, err := conn.Streams()
+	streams, err := p.conn.Streams()
 
 	if err != nil {
 		done <- err
@@ -117,7 +109,7 @@ func (p *RTMPPublisher) Start() <-chan error {
 	p.audioPipeline.Start()
 	p.videoPipeline.Start()
 
-	go p.handleMediaPacket(conn, done)
+	go p.handleMediaPacket(done)
 
 	return done
 }
@@ -150,10 +142,10 @@ func (p *RTMPPublisher) GetAudioTrack() *mediaserver.IncomingStreamTrack {
 	return nil
 }
 
-func (p *RTMPPublisher) handleMediaPacket(conn *rtmp.Conn, done chan error) {
+func (p *RTMPPublisher) handleMediaPacket(done chan error) {
 
 	for {
-		packet, err := conn.ReadPacket()
+		packet, err := p.conn.ReadPacket()
 		//fmt.Println("got pakcet")
 		if err != nil {
 			done <- err

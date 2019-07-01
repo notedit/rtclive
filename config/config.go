@@ -15,10 +15,17 @@ type serverstruct struct {
 
 type mediastruct struct {
 	Endpoint string `yaml:"endpoint"`
+	Minport  int    `yaml:"minport"`
+	Maxport  int    `yaml:"maxport"`
 }
 
 type relaystruct struct {
 	URL string `yaml:"url"`
+}
+
+type rtmpstruct struct {
+	Host string `yaml:"host"`
+	Port int    `yaml:"port"`
 }
 
 // Config struct
@@ -26,6 +33,7 @@ type Config struct {
 	Server     *serverstruct `yaml:"server"`
 	Media      *mediastruct  `yaml:"media"`
 	Relay      *relaystruct  `yaml:"relay"`
+	Rtmp       *rtmpstruct   `yaml:"rtmp"`
 	Capability struct {
 		Audio struct {
 			Codecs     []string `yaml:"codecs,flow"`

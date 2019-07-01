@@ -7,6 +7,8 @@ server:
 # webrtc media server address, the endpoint should be a public server ip, if you use rtclive in production
 media:
   endpoint: 127.0.0.1
+  minport: 20000
+  maxport: 60000
 
 
 
@@ -14,6 +16,12 @@ media:
 relay: 
   url: http://localhost:5000/onrelay
 
+
+
+# rtmp server listen addr
+rtmp:
+  host: 127.0.0.1
+  port: 1935
 
 
 # rtclive support server relay, when rtclive server can not find one stream, it will find stream from origin servers.
