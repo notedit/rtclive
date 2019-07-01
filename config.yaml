@@ -12,9 +12,10 @@ media:
 
 
 
-# rtclive support server relay, when rtclive server can not find one stream, it will find stream relay url from relay server.
 relay: 
-  url: http://localhost:5000/onrelay
+  host: 127.0.0.1
+  port: 1936
+
 
 
 

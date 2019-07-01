@@ -1,7 +1,6 @@
 package server
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -9,11 +8,15 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/imroc/req"
 	mediaserver "github.com/notedit/media-server-go"
 	"github.com/notedit/rtclive/config"
 	"github.com/notedit/rtclive/router"
 	"github.com/notedit/rtmp-lib"
+)
+
+const (
+	rtmpproto   = "rtmp://"
+	webrtcproto = "webrtc://"
 )
 
 type Server struct {
@@ -47,22 +50,18 @@ func New(cfg *config.Config) *Server {
 // ListenAndServe  start to listen and serve
 func (s *Server) ListenAndServe() {
 
-	// s.httpServer.POST("/pull", s.pullStream)
-	// s.httpServer.POST("/unpull", s.unpullStream)
+	//s.httpServer.POST("/api/publish", s.publish)
+	//s.httpServer.POST("/api/unpublish", s.unpublish)
 
-	s.httpServer.POST("/publish", s.publish)
-	s.httpServer.POST("/unpublish", s.unpublish)
-	s.httpServer.POST("/play", s.play)
-	s.httpServer.POST("/unplay", s.unplay)
-
-	s.httpServer.POST("/onrelay", s.onrelay)
+	s.httpServer.POST("/api/play", s.play)
+	s.httpServer.POST("/api/unplay", s.unplay)
 
 	address := s.cfg.Server.Host + ":" + strconv.Itoa(s.cfg.Server.Port)
 
 	fmt.Println("start listen on " + address)
 
 	if s.cfg.Rtmp != nil {
-
+		s.startRtmp()
 	}
 
 	s.httpServer.Run(address)
@@ -89,44 +88,38 @@ func (s *Server) play(c *gin.Context) {
 			c.JSON(200, gin.H{"s": 10002, "e": "does not exist"})
 			return
 		}
+
+		streaminfo := strings.Split(data.StreamURL, "/")
+
+		appName := streaminfo[len(streaminfo)-2]
+
 		// now we start to relay
-		relayStreamURL, err := s.relayRequest(data.StreamID, data.StreamURL)
+		relayStreamURL := fmt.Sprintf("rtmp://%s:%d/%s/%s", s.cfg.Relay.Host, s.cfg.Relay.Port, appName, data.StreamID)
 
 		fmt.Println(relayStreamURL)
 
+		conn, err := rtmp.Dial(relayStreamURL)
+
 		if err != nil {
-			c.JSON(200, gin.H{"s": 10002, "e": "does not exist"})
+			c.JSON(200, gin.H{"s": 10003, "e": "stream relay error"})
 			return
 		}
 
-		if strings.HasPrefix(relayStreamURL, "rtmp://") {
-			// rtmp relay
+		endpoint := s.getEndpoint(data.StreamID)
+		mediarouter = router.NewMediaRouter(data.StreamID, endpoint, s.cfg.Capabilities, true)
+		publisher := mediarouter.CreateRTMPPublisher(data.StreamID, conn)
 
-			conn, err := rtmp.Dial(relayStreamURL)
+		done := publisher.Start()
 
-			if err != nil {
-				c.JSON(200, gin.H{"s": 10003, "e": "stream relay error"})
-				return
-			}
+		s.addRouter(mediarouter)
 
-			endpoint := s.getEndpoint(data.StreamID)
-			mediarouter = router.NewMediaRouter(data.StreamID, endpoint, s.cfg.Capabilities, true)
-			publisher := mediarouter.CreateRTMPPublisher(data.StreamID, conn)
+		go func() {
+			<-done
+			fmt.Println("publisher done ")
+			mediarouter.Stop()
+			s.removeRouter(mediarouter.GetID())
+		}()
 
-			done := publisher.Start()
-
-			s.addRouter(mediarouter)
-
-			go func() {
-				<-done
-				fmt.Println("publisher done ")
-				mediarouter.Stop()
-				s.removeRouter(mediarouter.GetID())
-			}()
-
-		} else if strings.HasPrefix(relayStreamURL, "webrtc://") {
-			// webrtc relay
-		}
 	}
 
 	subscriber := mediarouter.CreateSubscriber(data.Sdp)
@@ -174,6 +167,7 @@ func (s *Server) publish(c *gin.Context) {
 		"d": map[string]string{
 			"sdp": answer,
 		}})
+
 }
 
 func (s *Server) unpublish(c *gin.Context) {
@@ -226,95 +220,6 @@ func (s *Server) unplay(c *gin.Context) {
 	})
 }
 
-func (s *Server) onrelay(c *gin.Context) {
-
-	c.JSON(200, gin.H{
-		"url": "rtmp://127.0.0.1/live/stream",
-	})
-}
-
-func (s *Server) relayRequest(streamID string, requestStreamURL string) (streamURL string, err error) {
-
-	res, err := req.Post(s.cfg.Relay.URL, req.BodyJSON(map[string]string{
-		"streamId":  streamID,
-		"streamUrl": requestStreamURL,
-	}))
-
-	if err != nil {
-		panic(err)
-	}
-
-	var ret struct {
-		URL string `json:"url"`
-	}
-
-	err = res.ToJSON(&ret)
-
-	if err != nil {
-		panic(err)
-	}
-
-	if !(strings.HasPrefix(ret.URL, "rtmp://") || strings.HasPrefix(ret.URL, "webrtc://")) {
-		return "", errors.New("url error ")
-	}
-
-	return ret.URL, nil
-
-}
-
-func (s *Server) pullStream(c *gin.Context) {
-
-	var data struct {
-		StreamID string `json:"streamId"`
-		Sdp      string `json:"sdp"`
-	}
-
-	if err := c.ShouldBind(&data); err != nil {
-		c.JSON(200, gin.H{"s": 10001, "e": err})
-		return
-	}
-
-	mediaRouter := s.getRouter(data.StreamID)
-
-	if mediaRouter == nil {
-		c.JSON(200, gin.H{"s": 10002, "e": "can not find stream"})
-		return
-	}
-
-	subscriber := mediaRouter.CreateSubscriber(data.Sdp)
-
-	fmt.Println("answer", subscriber.GetAnswer())
-
-	c.JSON(200, gin.H{"s": 10000, "d": map[string]string{
-		"sdp":          subscriber.GetAnswer(),
-		"subscriberId": subscriber.GetID(),
-	}})
-}
-
-func (s *Server) unpullStream(c *gin.Context) {
-
-	var data struct {
-		StreamID     string `json:"streamId"`
-		SubscriberID string `json:"subscriberId"`
-	}
-
-	if err := c.ShouldBind(&data); err != nil {
-		c.JSON(200, gin.H{"s": 10001, "e": err})
-		return
-	}
-
-	mediaRouter := s.getRouter(data.StreamID)
-
-	if mediaRouter == nil {
-		c.JSON(200, gin.H{"s": 10002, "e": "can not find stream"})
-		return
-	}
-
-	mediaRouter.StopSubscriber(data.SubscriberID)
-
-	c.JSON(200, gin.H{"s": 10000, "d": map[string]string{}})
-}
-
 func (s *Server) startRtmp() {
 
 	s.rtmpServer = &rtmp.Server{
@@ -347,7 +252,6 @@ func (s *Server) startRtmp() {
 		err := <-done
 
 		fmt.Println("error ", err)
-		fmt.Println("publisher done ")
 		mediarouter.Stop()
 		s.removeRouter(mediarouter.GetID())
 
