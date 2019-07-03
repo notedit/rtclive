@@ -20,6 +20,7 @@ type mediastruct struct {
 }
 
 type relaystruct struct {
+	URL  string `yaml:"url"`
 	Host string `yaml:"host"`
 	Port int    `yaml:"port"`
 }

@@ -105,7 +105,7 @@ func (s *RTCSubscriber) Stop() {
 
 func (s *RTCSubscriber) runIceTicker() {
 
-	for _ = range s.iceticker.C {
+	for range s.iceticker.C {
 		icestats := s.transport.GetICEStats()
 		fmt.Printf("Old RequestsReceived %d, New RequestsReceived %d\n", s.icestats.RequestsReceived, icestats.RequestsReceived)
 	}

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/imroc/req"
 	mediaserver "github.com/notedit/media-server-go"
 	"github.com/notedit/rtclive/config"
 	"github.com/notedit/rtclive/router"
@@ -158,8 +160,6 @@ func (s *Server) publish(c *gin.Context) {
 
 	answer := publisher.GetAnswer()
 
-	fmt.Println("answer", answer)
-
 	c.JSON(200, gin.H{
 		"s": 10000,
 		"d": map[string]string{
@@ -255,6 +255,35 @@ func (s *Server) startRtmp() {
 		s.removeRouter(mediarouter.GetID())
 
 	}
+}
+
+func (s *Server) getRelayURI(streamID string, requestStreamURL string) (streamURL string, err error) {
+
+	res, err := req.Post(s.cfg.Relay.URL, req.BodyJSON(map[string]string{
+		"streamId":  streamID,
+		"streamUrl": requestStreamURL,
+	}))
+
+	if err != nil {
+		panic(err)
+	}
+
+	var ret struct {
+		URL string `json:"url"`
+	}
+
+	err = res.ToJSON(&ret)
+
+	if err != nil {
+		panic(err)
+	}
+
+	if !(strings.HasPrefix(ret.URL, "rtmp://") || strings.HasPrefix(ret.URL, "webrtc://")) {
+		return "", errors.New("url error ")
+	}
+
+	return ret.URL, nil
+
 }
 
 func (s *Server) getEndpoint(streamID string) *mediaserver.Endpoint {
