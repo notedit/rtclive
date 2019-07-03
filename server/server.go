@@ -148,8 +148,6 @@ func (s *Server) publish(c *gin.Context) {
 		return
 	}
 
-	// todo check exist
-
 	capabilities := s.cfg.Capabilities
 
 	endpoint := s.getEndpoint(data.StreamID)
@@ -237,8 +235,9 @@ func (s *Server) startRtmp() {
 		}
 
 		streamID := streaminfo[len(streaminfo)-1]
+		appName := streaminfo[len(streaminfo)-2]
 
-		// todo check exist
+		fmt.Printf("publishing stream %s in app %s\n", streamID, appName)
 
 		endpoint := s.getEndpoint(streamID)
 		capabilities := s.cfg.Capabilities

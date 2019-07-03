@@ -2,6 +2,7 @@ package router
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gofrs/uuid"
 	mediaserver "github.com/notedit/media-server-go"
@@ -15,6 +16,8 @@ type RTCSubscriber struct {
 	answer      string
 	outgoing    *mediaserver.OutgoingStream
 	transport   *mediaserver.Transport
+	iceticker   *time.Ticker
+	icestats    mediaserver.ICEStats
 }
 
 // NewRTCSubscriber create new subscriber
@@ -47,6 +50,10 @@ func NewRTCSubscriber(sdpStr string, endpoint *mediaserver.Endpoint, capabilitie
 		transport: transport,
 		answer:    answer.String(),
 	}
+
+	subscriber.iceticker = time.NewTicker(5 * time.Second)
+
+	go subscriber.runIceTicker()
 
 	return subscriber
 }
@@ -89,6 +96,17 @@ func (s *RTCSubscriber) GetAnswer() string {
 
 // Stop stop it
 func (s *RTCSubscriber) Stop() {
+
 	s.outgoing.Stop()
 	s.transport.Stop()
+
+	s.iceticker.Stop()
+}
+
+func (s *RTCSubscriber) runIceTicker() {
+
+	for _ = range s.iceticker.C {
+		icestats := s.transport.GetICEStats()
+		fmt.Printf("Old RequestsReceived %d, New RequestsReceived %d\n", s.icestats.RequestsReceived, icestats.RequestsReceived)
+	}
 }
