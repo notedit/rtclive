@@ -162,6 +162,7 @@ func (p *RTMPPublisher) writePacket(packet av.Packet) {
 	stream := p.streams[packet.Idx]
 
 	if stream.Type() == av.H264 {
+
 		if packet.IsKeyFrame {
 			p.videoWriteBuffer.Write(startCodeBytes)
 			p.videoWriteBuffer.Write(p.videoCodecData.SPS())
@@ -170,9 +171,11 @@ func (p *RTMPPublisher) writePacket(packet av.Packet) {
 			p.videosrc.Push(p.videoWriteBuffer.Bytes())
 			p.videoWriteBuffer.Reset()
 		}
+
 		pktnalus, _ := h264.SplitNALUs(packet.Data)
 		if len(pktnalus) > 1 {
 			//fmt.Println("av.Packet has more than one nals")
+
 		}
 		for _, nalu := range pktnalus {
 			p.videoWriteBuffer.Write(startCodeBytes)

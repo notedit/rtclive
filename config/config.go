@@ -34,7 +34,7 @@ type rtmpstruct struct {
 type Config struct {
 	Server     *serverstruct `yaml:"server"`
 	Media      *mediastruct  `yaml:"media"`
-	Relay      *relaystruct  `yaml:"relay"`
+	Relay      bool          `yaml:"relay"`
 	Rtmp       *rtmpstruct   `yaml:"rtmp"`
 	Capability struct {
 		Audio struct {

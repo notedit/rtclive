@@ -1,15 +1,14 @@
 package server
 
 import (
-	"errors"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/imroc/req"
 	mediaserver "github.com/notedit/media-server-go"
 	"github.com/notedit/rtclive/config"
 	"github.com/notedit/rtclive/router"
@@ -55,18 +54,20 @@ func (s *Server) ListenAndServe() {
 	//s.httpServer.POST("/api/publish", s.publish)
 	//s.httpServer.POST("/api/unpublish", s.unpublish)
 
+	s.httpServer.GET("/test", s.test)
+
 	s.httpServer.POST("/api/play", s.play)
 	s.httpServer.POST("/api/unplay", s.unplay)
 
-	address := s.cfg.Server.Host + ":" + strconv.Itoa(s.cfg.Server.Port)
+	address := ":" + strconv.Itoa(s.cfg.Server.Port)
 
 	fmt.Println("start listen on " + address)
 
 	if s.cfg.Rtmp != nil {
-		s.startRtmp()
+		go s.startRtmp()
 	}
 
-	s.httpServer.Run(address)
+	s.httpServer.Run(":" + strconv.Itoa(s.cfg.Server.Port))
 }
 
 func (s *Server) play(c *gin.Context) {
@@ -86,21 +87,24 @@ func (s *Server) play(c *gin.Context) {
 
 	if mediarouter == nil {
 
-		if s.cfg.Relay == nil {
+		if !s.cfg.Relay {
 			c.JSON(200, gin.H{"s": 10002, "e": "does not exist"})
 			return
 		}
 
-		streaminfo := strings.Split(data.StreamURL, "/")
+		parsedURL, err := url.Parse(data.StreamURL)
 
-		appName := streaminfo[len(streaminfo)-2]
+		if err != nil {
+			c.JSON(200, gin.H{"s": 10004, "e": "stream url is invalid"})
+			return
+		}
 
-		// now we start to relay
-		relayStreamURL := fmt.Sprintf("rtmp://%s:%d/%s/%s", s.cfg.Relay.Host, s.cfg.Relay.Port, appName, data.StreamID)
+		// todo rtmp or webrtc relay
 
-		fmt.Println(relayStreamURL)
+		fmt.Println(data.StreamURL)
+		fmt.Println(parsedURL.Path)
 
-		conn, err := rtmp.Dial(relayStreamURL)
+		conn, err := rtmp.Dial(data.StreamURL)
 
 		if err != nil {
 			c.JSON(200, gin.H{"s": 10003, "e": "stream relay error"})
@@ -218,6 +222,10 @@ func (s *Server) unplay(c *gin.Context) {
 	})
 }
 
+func (s *Server) test(c *gin.Context) {
+	c.String(200, "hello world")
+}
+
 func (s *Server) startRtmp() {
 
 	s.rtmpServer = &rtmp.Server{
@@ -253,37 +261,9 @@ func (s *Server) startRtmp() {
 		fmt.Println("error ", err)
 		mediarouter.Stop()
 		s.removeRouter(mediarouter.GetID())
-
-	}
-}
-
-func (s *Server) getRelayURI(streamID string, requestStreamURL string) (streamURL string, err error) {
-
-	res, err := req.Post(s.cfg.Relay.URL, req.BodyJSON(map[string]string{
-		"streamId":  streamID,
-		"streamUrl": requestStreamURL,
-	}))
-
-	if err != nil {
-		panic(err)
 	}
 
-	var ret struct {
-		URL string `json:"url"`
-	}
-
-	err = res.ToJSON(&ret)
-
-	if err != nil {
-		panic(err)
-	}
-
-	if !(strings.HasPrefix(ret.URL, "rtmp://") || strings.HasPrefix(ret.URL, "webrtc://")) {
-		return "", errors.New("url error ")
-	}
-
-	return ret.URL, nil
-
+	s.rtmpServer.ListenAndServe()
 }
 
 func (s *Server) getEndpoint(streamID string) *mediaserver.Endpoint {

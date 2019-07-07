@@ -11,11 +11,8 @@ media:
   maxport: 60000
 
 
-
-relay: 
-  host: 127.0.0.1
-  port: 1936
-
+# true or false 
+relay: true   
 
 
 

@@ -69,6 +69,10 @@ func (s *MediaRouter) GetSubscribers() map[string]Subscriber {
 	return s.subscribers
 }
 
+func (s *MediaRouter) GetSubscribersCount() int {
+	return len(s.subscribers)
+}
+
 func (r *MediaRouter) CreatePublisher(sdpStr string) *RTCPublisher {
 
 	publisher := NewRTCPublisher(sdpStr, r.endpoint, r.capabilities)
