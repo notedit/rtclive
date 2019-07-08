@@ -15,7 +15,9 @@ import (
 )
 
 const video2rtp = `appsrc do-timestamp=true is-live=true name=videosrc ! h264parse ! rtph264pay timestamp-offset=0 config-interval=-1 pt=%d ! udpsink host=127.0.0.1 port=%d`
-const audio2rtp = `appsrc do-timestamp=true is-live=true name=audiosrc ! decodebin ! audioconvert ! audioresample ! opusenc ! rtpopuspay timestamp-offset=0 pt=%d ! udpsink host=127.0.0.1 port=%d`
+const audio2rtp = `appsrc is-live=true name=audiosrc ! aacparse ! faad ! audioconvert ! audioresample ! audio/x-raw,rate=48000 ! opusenc ! rtpopuspay timestamp-offset=0 pt=%d ! udpsink host=127.0.0.1 port=%d`
+
+const audio2rtp2 = `appsrc is-live=true name=audiosrc ! aacparse ! faad ! audioconvert ! audioresample ! audio/x-raw,rate=48000,channels=1 ! autoaudiosink`
 
 var startCodeBytes = []byte{0, 0, 0, 1}
 
@@ -99,6 +101,9 @@ func (p *RTMPPublisher) Start() <-chan error {
 	p.videosrc = p.videoPipeline.FindElement("videosrc")
 
 	audio2rtpstr := fmt.Sprintf(audio2rtp, audioPt, p.audioSession.GetLocalPort())
+
+	//audio2rtpstr = audio2rtp2
+
 	fmt.Println(audio2rtpstr)
 	p.audioPipeline, err = gstreamer.New(audio2rtpstr)
 	if err != nil {

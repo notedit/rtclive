@@ -59,6 +59,8 @@ func (s *Server) ListenAndServe() {
 	s.httpServer.POST("/api/play", s.play)
 	s.httpServer.POST("/api/unplay", s.unplay)
 
+	s.httpServer.POST("/api/relay", s.relay)
+
 	address := ":" + strconv.Itoa(s.cfg.Server.Port)
 
 	fmt.Println("start listen on " + address)
@@ -224,6 +226,10 @@ func (s *Server) unplay(c *gin.Context) {
 
 func (s *Server) test(c *gin.Context) {
 	c.String(200, "hello world")
+}
+
+func (s *Server) relay(c *gin.Context) {
+
 }
 
 func (s *Server) startRtmp() {
