@@ -94,6 +94,13 @@ func (r *MediaRouter) CreateRTMPPublisher(streamID string, conn *rtmp.Conn) *RTM
 	return publisher
 }
 
+func (r *MediaRouter) CreateFFPublisher(streamID string, streamURL string) *FFPublisher {
+
+	publisher := NewFFPublisher(streamID, streamURL, r.capabilities)
+	r.publisher = publisher
+	return publisher
+}
+
 func (r *MediaRouter) CreateSubscriber(sdpStr string) Subscriber {
 
 	subscriber := NewRTCSubscriber(sdpStr, r.endpoint, r.capabilities)

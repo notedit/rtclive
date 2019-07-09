@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"net/url"
 	"strconv"
 	"strings"
@@ -13,6 +14,8 @@ import (
 	"github.com/notedit/rtclive/config"
 	"github.com/notedit/rtclive/router"
 	"github.com/notedit/rtmp-lib"
+	"github.com/notedit/rtmp-lib/av"
+	"github.com/notedit/rtmp-lib/pubsub"
 )
 
 const (
@@ -20,13 +23,18 @@ const (
 	webrtcproto = "webrtc://"
 )
 
+type Channel struct {
+	que *pubsub.Queue
+}
+
 type Server struct {
-	sync.Mutex
+	sync.RWMutex
 	httpServer *gin.Engine
 
 	cfg *config.Config
 
-	rtmpServer *rtmp.Server
+	rtmpChannels map[string]*Channel
+	rtmpServer   *rtmp.Server
 
 	endpoints map[string]*mediaserver.Endpoint
 	routers   map[string]*router.MediaRouter
@@ -44,7 +52,7 @@ func New(cfg *config.Config) *Server {
 	server.httpServer = httpServer
 	server.endpoints = make(map[string]*mediaserver.Endpoint)
 	server.routers = make(map[string]*router.MediaRouter)
-
+	server.rtmpChannels = make(map[string]*Channel)
 	return server
 }
 
@@ -85,37 +93,34 @@ func (s *Server) play(c *gin.Context) {
 		return
 	}
 
+	parsedURL, err := url.Parse(data.StreamURL)
+	if err != nil {
+		c.JSON(200, gin.H{"s": 10004, "e": "stream url is invalid"})
+		return
+	}
+
 	mediarouter := s.getRouter(data.StreamID)
 
 	if mediarouter == nil {
 
-		if !s.cfg.Relay {
-			c.JSON(200, gin.H{"s": 10002, "e": "does not exist"})
-			return
-		}
-
-		parsedURL, err := url.Parse(data.StreamURL)
-
-		if err != nil {
-			c.JSON(200, gin.H{"s": 10004, "e": "stream url is invalid"})
-			return
-		}
-
-		// todo rtmp or webrtc relay
-
-		fmt.Println(data.StreamURL)
-		fmt.Println(parsedURL.Path)
-
-		conn, err := rtmp.Dial(data.StreamURL)
-
-		if err != nil {
-			c.JSON(200, gin.H{"s": 10003, "e": "stream relay error"})
-			return
+		var relayStreamURL string
+		// this is a rtmp push stream, we relay it from local
+		if s.getChannel(data.StreamID) != nil {
+			streaminfo := strings.Split(parsedURL.Path, "/")
+			if len(streaminfo) <= 2 {
+				fmt.Println("rtmp url does not match, rtmp url should like rtmp://host:port/app/stream")
+				return
+			}
+			streamID := streaminfo[len(streaminfo)-1]
+			appName := streaminfo[len(streaminfo)-2]
+			relayStreamURL = fmt.Sprintf("rtmp://localhost:%d/%s/%s", s.cfg.Rtmp.Port, appName, streamID)
+		} else {
+			relayStreamURL = data.StreamURL
 		}
 
 		endpoint := s.getEndpoint(data.StreamID)
 		mediarouter = router.NewMediaRouter(data.StreamID, endpoint, s.cfg.Capabilities, true)
-		publisher := mediarouter.CreateRTMPPublisher(data.StreamID, conn)
+		publisher := mediarouter.CreateFFPublisher(data.StreamID, relayStreamURL)
 
 		done := publisher.Start()
 
@@ -238,6 +243,44 @@ func (s *Server) startRtmp() {
 		Addr: fmt.Sprintf("%s:%d", s.cfg.Rtmp.Host, s.cfg.Rtmp.Port),
 	}
 
+	s.rtmpServer.HandlePlay = func(conn *rtmp.Conn) {
+
+		streaminfo := strings.Split(conn.URL.Path, "/")
+
+		if len(streaminfo) <= 2 {
+			fmt.Println("rtmp url does not match, rtmp url should like rtmp://host:port/app/stream")
+			conn.Close()
+			return
+		}
+
+		streamID := streaminfo[len(streaminfo)-1]
+		appName := streaminfo[len(streaminfo)-2]
+
+		fmt.Printf("publishing stream %s in app %s\n", streamID, appName)
+
+		ch := s.getChannel(streamID)
+
+		if ch != nil {
+			cursor := ch.que.Latest()
+			streams, err := cursor.Streams()
+			if err != nil {
+				panic(err)
+			}
+			conn.WriteHeader(streams)
+			for {
+				packet, err := cursor.ReadPacket()
+				if err != nil {
+					break
+				}
+				err = conn.WritePacket(packet)
+				if err != nil {
+					break
+				}
+			}
+		}
+		conn.Close()
+	}
+
 	s.rtmpServer.HandlePublish = func(conn *rtmp.Conn) {
 
 		streaminfo := strings.Split(conn.URL.Path, "/")
@@ -253,23 +296,36 @@ func (s *Server) startRtmp() {
 
 		fmt.Printf("publishing stream %s in app %s\n", streamID, appName)
 
-		endpoint := s.getEndpoint(streamID)
-		capabilities := s.cfg.Capabilities
+		ch := &Channel{}
+		ch.que = pubsub.NewQueue()
+		ch.que.SetMaxGopCount(0)
 
-		mediarouter := router.NewMediaRouter(streamID, endpoint, capabilities, true)
-		publisher := mediarouter.CreateRTMPPublisher(streamID, conn)
-		s.addRouter(mediarouter)
+		s.addChannel(streamID, ch)
 
-		done := publisher.Start()
+		var streams []av.CodecData
+		var err error
 
-		err := <-done
-
-		fmt.Println("error ", err)
-		mediarouter.Stop()
-		s.removeRouter(mediarouter.GetID())
+		if streams, err = conn.Streams(); err != nil {
+			fmt.Println(err)
+		} else {
+			ch.que.WriteHeader(streams)
+			for {
+				var pkt av.Packet
+				if pkt, err = conn.ReadPacket(); err != nil {
+					break
+				}
+				ch.que.WritePacket(pkt)
+			}
+		}
+		s.removeChannel(streamID)
+		ch.que.Close()
 	}
 
-	s.rtmpServer.ListenAndServe()
+	err := s.rtmpServer.ListenAndServe()
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func (s *Server) getEndpoint(streamID string) *mediaserver.Endpoint {
@@ -309,4 +365,22 @@ func (s *Server) removeRouter(routerID string) {
 	s.Lock()
 	defer s.Unlock()
 	delete(s.routers, routerID)
+}
+
+func (s *Server) addChannel(streamID string, channel *Channel) {
+	s.Lock()
+	defer s.Unlock()
+	s.rtmpChannels[streamID] = channel
+}
+
+func (s *Server) getChannel(streamID string) *Channel {
+	s.RLock()
+	defer s.RUnlock()
+	return s.rtmpChannels[streamID]
+}
+
+func (s *Server) removeChannel(streamID string) {
+	s.Lock()
+	defer s.Unlock()
+	delete(s.rtmpChannels, streamID)
 }
