@@ -3,15 +3,20 @@ package router
 import (
 	"fmt"
 	"os/exec"
+	"strconv"
 
 	"github.com/notedit/sdp"
 
 	mediaserver "github.com/notedit/media-server-go"
 )
 
-var ffmpegcommand = `ffmpeg -fflags nobuffer -i %s 
--vcodec copy -an -bsf:v h264_mp4toannexb,dump_extra -f rtp -payload_type %d rtp://127.0.0.1:%d  
--acodec libopus -ar 48000 -ac 2 -f rtp -payload_type %d rtp://127.0.0.1:%d`
+/**
+ffmpeg -fflags nobuffer -i rtmp://ali.wangxiao.eaydu.com/live_bak/x_100_rtc_test \
+-vcodec copy -an -bsf:v h264_mp4toannexb,dump_extra -f rtp -payload_type 96 rtp://127.0.0.1:5000 \
+-acodec libopus -vn -ar 48000 -ac 2 -f rtp -payload_type 96 rtp://127.0.0.1:5002
+*/
+
+var ffmpegparams = `-fflags nobuffer -i %s -vcodec copy -an -bsf:v h264_mp4toannexb -f rtp -payload_type %d rtp://127.0.0.1:%d -acodec libopus -vn -ar 48000 -ac 2 -f rtp -payload_type %d rtp://127.0.0.1:%d`
 
 // FFPublisher publisher
 type FFPublisher struct {
@@ -47,18 +52,33 @@ func (p *FFPublisher) Start() <-chan error {
 	audioPt := audioMediaInfo.GetCodec("opus").GetType()
 	p.audioSession = mediaserver.NewStreamerSession(audioMediaInfo)
 
-	ffmpegcommandstr := fmt.Sprintf(ffmpegcommand, p.streamURL, videoPt, p.videoSession.GetLocalPort(), audioPt, p.audioSession.GetLocalPort())
-	p.command = exec.Command(ffmpegcommandstr)
+	command := []string{
+		"-i", p.streamURL,
+		"-fflags", "nobuffer",
+		"-vcodec", "copy", "-an", "-bsf:v", "h264_mp4toannexb",
+		"-f", "rtp",
+		"-payload_type", strconv.Itoa(videoPt),
+		"rtp://127.0.0.1:" + strconv.Itoa(p.videoSession.GetLocalPort()),
+		"-acodec", "libopus",
+		"-vn", "-ar", "48000", "-ac", "2",
+		"-f", "rtp",
+		"-payload_type", strconv.Itoa(audioPt),
+		"rtp://127.0.0.1:" + strconv.Itoa(p.audioSession.GetLocalPort()),
+	}
+
+	p.command = exec.Command("ffmpeg", command...)
 
 	err := p.command.Start()
 
 	if err != nil {
 		done <- err
+		fmt.Println("command start ", err)
 		return done
 	}
 
 	go func() {
 		err := p.command.Wait()
+		fmt.Println("command wait ", err)
 		done <- err
 	}()
 
