@@ -6,7 +6,6 @@ require (
 	github.com/gin-gonic/gin v1.3.0
 	github.com/gofrs/uuid v3.2.0+incompatible
 	github.com/imroc/req v0.2.3
-	github.com/notedit/gstreamer-go v0.2.0
 	github.com/notedit/media-server-go v0.1.12
 	github.com/notedit/rtmp-lib v0.0.2
 	github.com/notedit/sdp v0.0.1

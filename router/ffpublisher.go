@@ -18,8 +18,6 @@ ffmpeg -fflags nobuffer -i rtmp://ali.wangxiao.eaydu.com/live_bak/x_100_rtc_test
 -acodec libopus -vn -ar 48000 -ac 2 -f rtp -payload_type 96 rtp://127.0.0.1:5002
 */
 
-var ffmpegparams = `-fflags nobuffer -i %s -vcodec copy -an -bsf:v h264_mp4toannexb -f rtp -payload_type %d rtp://127.0.0.1:%d -acodec libopus -vn -ar 48000 -ac 2 -f rtp -payload_type %d rtp://127.0.0.1:%d`
-
 // FFPublisher publisher
 type FFPublisher struct {
 	id           string
