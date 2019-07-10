@@ -1,7 +1,9 @@
 package router
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os/exec"
 	"strconv"
 
@@ -23,6 +25,7 @@ type FFPublisher struct {
 	id           string
 	streamURL    string
 	command      *exec.Cmd
+	stdStdinPipe io.WriteCloser
 	videoSession *mediaserver.StreamerSession
 	audioSession *mediaserver.StreamerSession
 	capabilities map[string]*sdp.Capability
@@ -70,17 +73,30 @@ func (p *FFPublisher) Start() <-chan error {
 
 	err := p.command.Start()
 
-	if err != nil {
-		done <- err
-		fmt.Println("command start ", err)
-		return done
+	out := &bytes.Buffer{}
+
+	p.command.Stdout = out
+
+	stdin, err := p.command.StdinPipe()
+	if nil != err {
+		fmt.Println("Stdin not available: " + err.Error())
 	}
 
-	go func() {
-		err := p.command.Wait()
-		fmt.Println("command wait ", err)
+	p.stdStdinPipe = stdin
+
+	go func(err error, out *bytes.Buffer) {
+		if err != nil {
+			done <- fmt.Errorf("Failed Start FFMPEG with %s, message %s", err, out.String())
+			close(done)
+			return
+		}
+		err = p.command.Wait()
+		if err != nil {
+			err = fmt.Errorf("Failed Finish FFMPEG with %s, message %s", err, out.String())
+		}
 		done <- err
-	}()
+		close(done)
+	}(err, out)
 
 	return done
 }
@@ -125,6 +141,9 @@ func (p *FFPublisher) Stop() {
 	}
 
 	if p.command != nil {
-		p.command.Process.Kill()
+		stdin := p.stdStdinPipe
+		if stdin != nil {
+			stdin.Write([]byte("q\n"))
+		}
 	}
 }
