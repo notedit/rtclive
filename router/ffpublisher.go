@@ -69,8 +69,6 @@ func (p *FFPublisher) Start() <-chan error {
 
 	p.command = exec.Command("ffmpeg", command...)
 
-	err := p.command.Start()
-
 	out := &bytes.Buffer{}
 
 	p.command.Stdout = out
@@ -81,6 +79,8 @@ func (p *FFPublisher) Start() <-chan error {
 	}
 
 	p.stdStdinPipe = stdin
+
+	err = p.command.Start()
 
 	go func(err error, out *bytes.Buffer) {
 		if err != nil {
