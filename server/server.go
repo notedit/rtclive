@@ -18,11 +18,6 @@ import (
 	"github.com/notedit/rtmp-lib/pubsub"
 )
 
-const (
-	rtmpproto   = "rtmp://"
-	webrtcproto = "webrtc://"
-)
-
 type Channel struct {
 	que *pubsub.Queue
 }
@@ -121,14 +116,15 @@ func (s *Server) play(c *gin.Context) {
 		endpoint := s.getEndpoint(data.StreamID)
 		mediarouter = router.NewMediaRouter(data.StreamID, endpoint, s.cfg.Capabilities, true)
 		publisher := mediarouter.CreateFFPublisher(data.StreamID, relayStreamURL)
+		s.addRouter(mediarouter)
 
 		done := publisher.Start()
 
-		s.addRouter(mediarouter)
-
 		go func() {
-			<-done
-			fmt.Println("publisher done ")
+			err := <-done
+			if err != nil {
+				fmt.Printf("publisher done error %s", err)
+			}
 			mediarouter.Stop()
 			s.removeRouter(mediarouter.GetID())
 		}()
